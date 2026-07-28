@@ -1,0 +1,28 @@
+# ── macOS ──
+.DS_Store              
+.AppleDouble
+.LSOverride
+
+# ── Editor / IDE ──
+.vscode/               
+.idea/
+*.swp                  # vim 임시 파일
+
+# ── Python ──
+__pycache__/           
+*.py[cod]              # .pyc / .pyo / .pyd 한 번에
+*.egg-info/
+.pytest_cache/
+
+# ── 가상환경 ──
+.venv/                 
+venv/
+env/
+
+# ── 환경변수 (보안) ──
+.env                   
+.env.*
+!.env.example          
+
+# ── 로그 원본 ──
+docs/logs/raw/         # script 명령으로 뜬 세션 원본. 발췌본만 커밋
