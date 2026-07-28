@@ -1,0 +1,84 @@
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker images[?2004l
+REPOSITORY   TAG       IMAGE ID   CREATED   SIZE
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker ps[?2004l
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker ps -a[?2004l
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker run g hello-word ld[?2004l
+Unable to find image 'hello-world:latest' locally
+latest: Pulling from library/hello-world
+
+[1A[2K4f55086f7dd0: Pulling fs layer [1B[1A[2K4f55086f7dd0: Extracting  2.415kB/2.415kB[1B[1A[2K4f55086f7dd0: Extracting  2.415kB/2.415kB[1B[1A[2K4f55086f7dd0: Pull complete [1BDigest: sha256:c3cbe1cc1aa588a64951ac6286e0df7b27fe2e6324b1001c619bb358770c0178
+Status: Downloaded newer image for hello-world:latest
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (amd64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
+
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker images[?2004l
+REPOSITORY    TAG       IMAGE ID       CREATED        SIZE
+hello-world   latest    e2ac70e7319a   4 months ago   10.1kB
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker ps -a[?2004l
+CONTAINER ID   IMAGE         COMMAND    CREATED          STATUS                      PORTS     NAMES
+a09fc5b98b54   hello-world   "/hello"   14 seconds ago   Exited (0) 13 seconds ago             eager_driscoll
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker logs a09fc5b98b54[?2004l
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (amd64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
+
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker run -it ubuntu bash[?2004l
+Unable to find image 'ubuntu:latest' locally
+latest: Pulling from library/ubuntu
+
+[1A[2Ked819469700f: Pulling fs layer [1B
+[1A[2Ka3679419df18: Pulling fs layer [1B[1A[2Ka3679419df18: Downloading     393B/393B[1B[1A[2Ka3679419df18: Verifying Checksum [1B[1A[2Ka3679419df18: Download complete [1B[2A[2Ked819469700f: Downloading  425.3kB/41.58MB[2B[2A[2Ked819469700f: Downloading  6.815MB/41.58MB[2B[2A[2Ked819469700f: Downloading  16.19MB/41.58MB[2B[2A[2Ked819469700f: Downloading  23.85MB/41.58MB[2B[2A[2Ked819469700f: Downloading  33.23MB/41.58MB[2B[2A[2Ked819469700f: Downloading  40.89MB/41.58MB[2B[2A[2Ked819469700f: Verifying Checksum [2B[2A[2Ked819469700f: Download complete [2B[2A[2Ked819469700f: Extracting    426kB/41.58MB[2B[2A[2Ked819469700f: Extracting  7.242MB/41.58MB[2B[2A[2Ked819469700f: Extracting  11.08MB/41.58MB[2B[2A[2Ked819469700f: Extracting  17.47MB/41.58MB[2B[2A[2Ked819469700f: Extracting  19.17MB/41.58MB[2B[2A[2Ked819469700f: Extracting     23MB/41.58MB[2B[2A[2Ked819469700f: Extracting  29.82MB/41.58MB[2B[2A[2Ked819469700f: Extracting  35.36MB/41.58MB[2B[2A[2Ked819469700f: Extracting  36.21MB/41.58MB[2B[2A[2Ked819469700f: Extracting  38.76MB/41.58MB[2B[2A[2Ked819469700f: Extracting  39.19MB/41.58MB[2B[2A[2Ked819469700f: Extracting  39.62MB/41.58MB[2B[2A[2Ked819469700f: Extracting  40.47MB/41.58MB[2B[2A[2Ked819469700f: Extracting  40.89MB/41.58MB[2B[2A[2Ked819469700f: Extracting  41.32MB/41.58MB[2B[2A[2Ked819469700f: Extracting  41.58MB/41.58MB[2B[2A[2Ked819469700f: Pull complete [2B[1A[2Ka3679419df18: Extracting     393B/393B[1B[1A[2Ka3679419df18: Extracting     393B/393B[1B[1A[2Ka3679419df18: Pull complete [1BDigest: sha256:3131b4cc82a783df6c9df078f86e01819a13594b865c2cad47bd1bca2b7063bb
+Status: Downloaded newer image for ubuntu:latest
+[?2004h]0;root@cec7c58bcad3: /root@cec7c58bcad3:/# ls
+[?2004l[0m[01;36mbin[0m   [01;34mdev[0m  [01;34mhome[0m  [01;36mlib64[0m  [01;34mmnt[0m  [01;34mproc[0m  [01;34mrun[0m   [01;34msrv[0m  [30;42mtmp[0m  [01;34mvar[0m
+[01;34mboot[0m  [01;34metc[0m  [01;36mlib[0m   [01;34mmedia[0m  [01;34mopt[0m  [01;34mroot[0m  [01;36msbin[0m  [01;34msys[0m  [01;34musr[0m
+[?2004h]0;root@cec7c58bcad3: /root@cec7c58bcad3:/# echo "hell  o from container"
+[?2004lhello from container
+[?2004h]0;root@cec7c58bcad3: /root@cec7c58bcad3:/# [Kexit
+[?2004lexit
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker ps -a[?2004l
+CONTAINER ID   IMAGE         COMMAND    CREATED          STATUS                     PORTS     NAMES
+cec7c58bcad3   ubuntu        "bash"     36 seconds ago   Exited (0) 2 seconds ago             angry_borg
+a09fc5b98b54   hello-world   "/hello"   3 minutes ago    Exited (0) 3 minutes ago             eager_driscoll
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker stats --no-stream[?2004l
+CONTAINER ID   NAME      CPU %     MEM USAGE / LIMIT   MEM %     NET I/O   BLOCK I/O   PIDS
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004heexit[?2004l
