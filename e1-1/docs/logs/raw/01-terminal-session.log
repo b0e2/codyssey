@@ -1,0 +1,38 @@
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hppwd[?2004l
+/Users/beenjeong022655/codyssey-e1-1
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hlls -la[?2004l
+total 16
+drwxr-xr-x   6 beenjeong022655  beenjeong022655   192 Jul 28 11:44 .
+drwxr-x---+ 21 beenjeong022655  beenjeong022655   672 Jul 28 11:49 ..
+drwxr-xr-x  12 beenjeong022655  beenjeong022655   384 Jul 28 11:39 .git
+-rw-r--r--   1 beenjeong022655  beenjeong022655   578 Jul 28 11:38 .gitignore
+drwxr-xr-x   3 beenjeong022655  beenjeong022655    96 Jul 28 11:45 docs
+-rw-r--r--   1 beenjeong022655  beenjeong022655  1221 Jul 28 11:38 README.md
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hccd box   c  mmkdir box[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hccd box[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 box % [K[?2004httoyc  uch note.txt[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 box % [K[?2004heecho "Hello World" > note.txt[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 box % [K[?2004hccat ntoe.     note.txt[?2004l
+Hello World
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 box % [K[?2004hnnp n  ccp ntoe   ote.txt note_copy.txt[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 box % [K[?2004hmmv note_c      m  lls -la[?2004l
+total 16
+drwxr-xr-x  4 beenjeong022655  beenjeong022655  128 Jul 28 11:50 .
+drwxr-xr-x  7 beenjeong022655  beenjeong022655  224 Jul 28 11:49 ..
+-rw-r--r--  1 beenjeong022655  beenjeong022655   12 Jul 28 11:50 note_copy.txt
+-rw-r--r--  1 beenjeong022655  beenjeong022655   12 Jul 28 11:49 note.txt
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 box % [K[?2004hmmv note_copy.y txt notefi  _final.txt[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 box % [K[?2004hlls -la[?2004l
+total 16
+drwxr-xr-x  4 beenjeong022655  beenjeong022655  128 Jul 28 11:50 .
+drwxr-xr-x  7 beenjeong022655  beenjeong022655  224 Jul 28 11:49 ..
+-rw-r--r--  1 beenjeong022655  beenjeong022655   12 Jul 28 11:50 note_final.txt
+-rw-r--r--  1 beenjeong022655  beenjeong022655   12 Jul 28 11:49 note.txt
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 box % [K[?2004hrrm note_final.txt[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 box % [K[?2004hlls -la[?2004l
+total 8
+drwxr-xr-x  3 beenjeong022655  beenjeong022655   96 Jul 28 11:51 .
+drwxr-xr-x  7 beenjeong022655  beenjeong022655  224 Jul 28 11:49 ..
+-rw-r--r--  1 beenjeong022655  beenjeong022655   12 Jul 28 11:49 note.txt
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 box % [K[?2004hccd ..[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004heexit[?2004l
