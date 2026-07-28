@@ -1,0 +1,67 @@
+[1m[7m%[27m[1m[0m                                                                                    [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker run -d --name test-nginx nginx[?2004l
+Unable to find image 'nginx:latest' locally
+latest: Pulling from library/nginx
+
+[1A[2K062e450697fa: Pulling fs layer [1B
+[1A[2K82454cdbf456: Pulling fs layer [1B
+[1A[2K3c7ab7949321: Pulling fs layer [1B
+[1A[2Kcacfcdd01f30: Pulling fs layer [1B
+[1A[2Kb6698f04e005: Pulling fs layer [1B
+[1A[2K2bedaf25031a: Pulling fs layer [1B
+[1A[2Kd26f27cc8c41: Pulling fs layer [1B[3A[2Kb6698f04e005: Waiting [3B[2A[2K2bedaf25031a: Waiting [2B[1A[2Kd26f27cc8c41: Waiting [1B[4A[2Kcacfcdd01f30: Waiting [4B[5A[2K3c7ab7949321: Downloading     626B/626B[5B[5A[2K3c7ab7949321: Verifying Checksum [5B[5A[2K3c7ab7949321: Download complete [5B[7A[2K062e450697fa: Downloading  310.7kB/29.78MB[7B[6A[2K82454cdbf456: Downloading  343.5kB/33.33MB[6B[7A[2K062e450697fa: Downloading  7.471MB/29.78MB[7B[6A[2K82454cdbf456: Downloading   3.44MB/33.33MB[6B[7A[2K062e450697fa: Downloading  12.14MB/29.78MB[7B[6A[2K82454cdbf456: Downloading  6.537MB/33.33MB[6B[7A[2K062e450697fa: Downloading  16.19MB/29.78MB[7B[6A[2K82454cdbf456: Downloading  9.977MB/33.33MB[6B[7A[2K062e450697fa: Downloading  21.17MB/29.78MB[7B[6A[2K82454cdbf456: Downloading  14.79MB/33.33MB[6B[7A[2K062e450697fa: Downloading  25.53MB/29.78MB[7B[6A[2K82454cdbf456: Downloading  18.92MB/33.33MB[6B[7A[2K062e450697fa: Downloading  29.26MB/29.78MB[7B[7A[2K062e450697fa: Verifying Checksum [7B[7A[2K062e450697fa: Download complete [7B[4A[2Kcacfcdd01f30: Downloading     955B/955B[4B[4A[2Kcacfcdd01f30: Verifying Checksum [4B[4A[2Kcacfcdd01f30: Download complete [4B[6A[2K82454cdbf456: Downloading  26.15MB/33.33MB[6B[7A[2K062e450697fa: Extracting  327.7kB/29.78MB[7B[6A[2K82454cdbf456: Verifying Checksum [6B[6A[2K82454cdbf456: Download complete [6B[7A[2K062e450697fa: Extracting  2.949MB/29.78MB[7B[7A[2K062e450697fa: Extracting  7.537MB/29.78MB[7B[7A[2K062e450697fa: Extracting  10.81MB/29.78MB[7B[7A[2K062e450697fa: Extracting   15.4MB/29.78MB[7B[7A[2K062e450697fa: Extracting  21.95MB/29.78MB[7B[3A[2Kb6698f04e005: Downloading     403B/403B[3B[3A[2Kb6698f04e005: Verifying Checksum [3B[2A[2K2bedaf25031a: Downloading   1.21kB/1.21kB[2B[2A[2K2bedaf25031a: Verifying Checksum [2B[2A[2K2bedaf25031a: Download complete [2B[1A[2Kd26f27cc8c41: Downloading  1.397kB/1.397kB[1B[1A[2Kd26f27cc8c41: Verifying Checksum [1B[1A[2Kd26f27cc8c41: Download complete [1B[7A[2K062e450697fa: Extracting  26.21MB/29.78MB[7B[7A[2K062e450697fa: Extracting  28.51MB/29.78MB[7B[7A[2K062e450697fa: Extracting  29.16MB/29.78MB[7B[7A[2K062e450697fa: Extracting  29.78MB/29.78MB[7B[7A[2K062e450697fa: Pull complete [7B[6A[2K82454cdbf456: Extracting  360.4kB/33.33MB[6B[6A[2K82454cdbf456: Extracting  6.849MB/33.33MB[6B[6A[2K82454cdbf456: Extracting   13.7MB/33.33MB[6B[6A[2K82454cdbf456: Extracting   19.1MB/33.33MB[6B[6A[2K82454cdbf456: Extracting  25.95MB/33.33MB[6B[6A[2K82454cdbf456: Extracting  30.64MB/33.33MB[6B[6A[2K82454cdbf456: Extracting  33.33MB/33.33MB[6B[6A[2K82454cdbf456: Pull complete [6B[5A[2K3c7ab7949321: Extracting     626B/626B[5B[5A[2K3c7ab7949321: Extracting     626B/626B[5B[5A[2K3c7ab7949321: Pull complete [5B[4A[2Kcacfcdd01f30: Extracting     955B/955B[4B[4A[2Kcacfcdd01f30: Extracting     955B/955B[4B[4A[2Kcacfcdd01f30: Pull complete [4B[3A[2Kb6698f04e005: Extracting     403B/403B[3B[3A[2Kb6698f04e005: Extracting     403B/403B[3B[3A[2Kb6698f04e005: Pull complete [3B[2A[2K2bedaf25031a: Extracting   1.21kB/1.21kB[2B[2A[2K2bedaf25031a: Extracting   1.21kB/1.21kB[2B[2A[2K2bedaf25031a: Pull complete [2B[1A[2Kd26f27cc8c41: Extracting  1.397kB/1.397kB[1B[1A[2Kd26f27cc8c41: Extracting  1.397kB/1.397kB[1B[1A[2Kd26f27cc8c41: Pull complete [1BDigest: sha256:5a88c9c45479443d7be2eadc894b4ed0a9801bae03d97a5760ae13b5c2005942
+Status: Downloaded newer image for nginx:latest
+c05a023103d3c5478a9fb6bfbb8a2f81bae16fdb9114fef3713684c2204fb736
+[1m[7m%[27m[1m[0m                                                                                    [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddor cker ps[?2004l
+CONTAINER ID   IMAGE        COMMAND                  CREATED          STATUS                    PORTS                                         NAMES
+c05a023103d3   nginx        "/docker-entrypoint.…"   5 seconds ago    Up 4 seconds              80/tcp                                        test-nginx
+6dfc7648cc9c   my-web:1.0   "uvicorn main:app --…"   51 minutes ago   Up 51 minutes (healthy)   0.0.0.0:8081->8000/tcp, [::]:8081->8000/tcp   my-web-8081
+543e358c6a37   my-web:1.0   "uvicorn main:app --…"   51 minutes ago   Up 51 minutes (healthy)   0.0.0.0:8080->8000/tcp, [::]:8080->8000/tcp   my-web-8080
+[1m[7m%[27m[1m[0m                                                                                    [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddok cker exec -it test-nginx bash [?2004l
+[?2004hroot@c05a023103d3:/# ls
+[?2004lbin   docker-entrypoint.d   home   media  proc	sbin  tmp
+boot  docker-entrypoint.sh  lib    mnt	  root	srv   usr
+dev   etc		    lib64  opt	  run	sys   var
+[?2004hroot@c05a023103d3:/# exit
+[?2004lexit
+[1m[7m%[27m[1m[0m                                                                                    [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker ps[?2004l
+CONTAINER ID   IMAGE        COMMAND                  CREATED          STATUS                    PORTS                                         NAMES
+c05a023103d3   nginx        "/docker-entrypoint.…"   33 seconds ago   Up 31 seconds             80/tcp                                        test-nginx
+6dfc7648cc9c   my-web:1.0   "uvicorn main:app --…"   51 minutes ago   Up 51 minutes (healthy)   0.0.0.0:8081->8000/tcp, [::]:8081->8000/tcp   my-web-8081
+543e358c6a37   my-web:1.0   "uvicorn main:app --…"   51 minutes ago   Up 51 minutes (healthy)   0.0.0.0:8080->8000/tcp, [::]:8080->8000/tcp   my-web-8080
+[1m[7m%[27m[1m[0m                                                                                    [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker attach test-nginx[?2004l
+ls 
+^C2026/07/28 08:35:52 [notice] 1#1: signal 2 (SIGINT) received, exiting
+2026/07/28 08:35:52 [notice] 30#30: exiting
+2026/07/28 08:35:52 [notice] 32#32: exiting
+2026/07/28 08:35:52 [notice] 30#30: exit
+2026/07/28 08:35:52 [notice] 32#32: exit
+2026/07/28 08:35:52 [notice] 29#29: exiting
+2026/07/28 08:35:52 [notice] 33#33: exiting
+2026/07/28 08:35:52 [notice] 29#29: exit
+2026/07/28 08:35:52 [notice] 33#33: exit
+2026/07/28 08:35:52 [notice] 34#34: exiting
+2026/07/28 08:35:52 [notice] 31#31: exiting
+2026/07/28 08:35:52 [notice] 34#34: exit
+2026/07/28 08:35:52 [notice] 31#31: exit
+2026/07/28 08:35:52 [notice] 1#1: signal 17 (SIGCHLD) received from 32
+2026/07/28 08:35:52 [notice] 1#1: worker process 32 exited with code 0
+2026/07/28 08:35:52 [notice] 1#1: worker process 29 exited with code 0
+2026/07/28 08:35:52 [notice] 1#1: signal 29 (SIGIO) received
+2026/07/28 08:35:52 [notice] 1#1: signal 17 (SIGCHLD) received from 29
+2026/07/28 08:35:52 [notice] 1#1: signal 17 (SIGCHLD) received from 31
+2026/07/28 08:35:52 [notice] 1#1: worker process 31 exited with code 0
+2026/07/28 08:35:52 [notice] 1#1: worker process 33 exited with code 0
+2026/07/28 08:35:52 [notice] 1#1: signal 29 (SIGIO) received
+2026/07/28 08:35:52 [notice] 1#1: signal 17 (SIGCHLD) received from 33
+2026/07/28 08:35:52 [notice] 1#1: signal 17 (SIGCHLD) received from 30
+2026/07/28 08:35:52 [notice] 1#1: worker process 30 exited with code 0
+2026/07/28 08:35:52 [notice] 1#1: worker process 34 exited with code 0
+2026/07/28 08:35:52 [notice] 1#1: exit
+[1m[7m%[27m[1m[0m                                                                                    [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hddocker ps[?2004l
+CONTAINER ID   IMAGE        COMMAND                  CREATED          STATUS                    PORTS                                         NAMES
+6dfc7648cc9c   my-web:1.0   "uvicorn main:app --…"   52 minutes ago   Up 52 minutes (healthy)   0.0.0.0:8081->8000/tcp, [::]:8081->8000/tcp   my-web-8081
+543e358c6a37   my-web:1.0   "uvicorn main:app --…"   52 minutes ago   Up 52 minutes (healthy)   0.0.0.0:8080->8000/tcp, [::]:8080->8000/tcp   my-web-8080
+[1m[7m%[27m[1m[0m                                                                                    [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004h[7mdocker rm test-nginx[27m
+[K
+[7mexit[27m[K[A[A[35C[27md[27mo[27mc[27mk[27me[27mr[27m [27mr[27mm[27m [27mt[27me[27ms[27mt[27m-[27mn[27mg[27mi[27mn[27mx[2B[27me[27mx[27mi[27mt[?2004l
+test-nginx
