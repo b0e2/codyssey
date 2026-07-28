@@ -1,0 +1,16 @@
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004hccd perm[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 perm % [K[?2004hmmkdir perm-dir[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 perm % [K[?2004httouch perm-file.sh[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 perm % [K[?2004hlls -l perm-dir perm-fiu le.sh[?2004l
+-rw-r--r--  1 beenjeong022655  beenjeong022655  0 Jul 28 12:50 perm-file.sh
+
+perm-dir:
+total 0
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 perm % [K[?2004hcchmod 700 permdir   -dir[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 perm % [K[?2004hcchmod 755 perm-file.sh[?2004l
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 perm % [K[?2004hlls -l perm-dir perm-file.sh[?2004l
+-rwxr-xr-x  1 beenjeong022655  beenjeong022655  0 Jul 28 12:50 perm-file.sh
+
+perm-dir:
+total 0
+[1m[7m%[27m[1m[0m                                                                                                  [0m[27m[24m[Jbeenjeong022655@c5r4s7 perm % [K[?2004heexit[?2004l
