@@ -23,6 +23,3 @@ env/
 .env                   
 .env.*
 !.env.example          
-
-# ── 로그 원본 ──
-docs/logs/raw/         # script 명령으로 뜬 세션 원본. 발췌본만 커밋
