@@ -1,0 +1,16 @@
+[1m[7m%[27m[1m[0m                                                                                    [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004h[7mgit config --list[27m[17D[27mg[27mi[27mt[27m [27mc[27mo[27mn[27mf[27mi[27mg[27m [27m-[27m-[27ml[27mi[27ms[27mt[?2004l
+[?1h=credential.helper=osxkeychain[m
+user.name=b0e2[m
+user.email=beenjeong02@gmail.com[m
+core.repositoryformatversion=0[m
+core.filemode=true[m
+core.bare=false[m
+core.logallrefupdates=true[m
+core.ignorecase=true[m
+core.precomposeunicode=true[m
+remote.origin.url=https://github.com/b0e2/codyssey-e1-1.git[m
+remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*[m
+branch.main.remote=origin[m
+branch.main.merge=refs/heads/main[m
+branch.main.vscode-merge-base=origin/main[m
+[K[?1l>[1m[7m%[27m[1m[0m                                                                                    [0m[27m[24m[Jbeenjeong022655@c5r4s7 codyssey-e1-1 % [K[?2004heexit[?2004l
