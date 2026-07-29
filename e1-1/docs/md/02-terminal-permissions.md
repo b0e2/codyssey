@@ -5,8 +5,7 @@
 ## 수행 명령 및 결과
 
 ```
-
-​$ cd perm
+$ cd perm
 
 $ mkdir perm-dir
 $ touch perm-file.sh
@@ -25,7 +24,6 @@ $ ls -l perm-dir perm-file.sh
 
 perm-dir:
 total 0
-​
 ```
 
 ## 실습 정리 (복사 / 이동 / 삭제)

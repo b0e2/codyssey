@@ -47,4 +47,6 @@ push 출력의 `To https://github.com/b0e2/codyssey-e1-1.git` 및 `main -> main`
 - 원격 저장소(GitHub) 연동 확인: `remote.origin.url=https://github.com/b0e2/codyssey-e1-1.git`
 - VSCode에서 GitHub 로그인 및 저장소 연동 완료 (스크린샷 첨부)
 
+## VSCode GitHub 연동 증거
+
 ![VSCode GitHub 연동](../assets/vscode-github.png)

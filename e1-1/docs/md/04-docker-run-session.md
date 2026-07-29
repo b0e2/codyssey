@@ -68,5 +68,5 @@ CONTAINER ID   NAME      CPU %     MEM USAGE / LIMIT   MEM %     NET I/O   BLOCK
 
 - `docker run hello-world`: 컨테이너가 작업(메시지 출력)을 마치면 프로세스가 끝나서 자동으로 종료(Exited) 상태가 됨
 - `docker run -it ubuntu bash`: `-it` 옵션으로 대화형 셸에 진입, 내부에서 `exit`을 입력하기 전까지는 컨테이너가 계속 살아있음. `exit`으로 셸 프로세스가 끝나면 컨테이너도 같이 종료됨
-- `docker attach <CONTAINER ID>`: 메인 프로세스 화면에 바로 연결하기 
-- `docker exec - it <CONTAINER ID> /bin/bash` : 컨테이너 내부에 안전하게 새로운 bash 쉘 열기 
+- `docker attach <CONTAINER ID>`: 메인 프로세스 화면에 바로 연결하기
+- `docker exec -it <CONTAINER ID> /bin/bash`: 컨테이너 내부에 안전하게 새로운 bash 쉘 열기
