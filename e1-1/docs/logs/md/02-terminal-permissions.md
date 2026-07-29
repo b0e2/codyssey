@@ -28,7 +28,29 @@ total 0
 ​
 ```
 
+## 실습 정리 (복사 / 이동 / 삭제)
+
+권한 실습에 사용한 파일을 복사(`cp`)·이름 변경(`mv`)·삭제(`rm`)해 정리한다. (원본 `perm-file.sh`는 보존)
+
+```
+$ cp perm-file.sh perm-file.sh.bak
+$ ls
+perm-dir
+perm-file.sh
+perm-file.sh.bak
+$ mv perm-file.sh.bak perm-backup.sh    # 이름 변경
+$ ls
+perm-backup.sh
+perm-dir
+perm-file.sh
+$ rm perm-backup.sh                       # 삭제
+$ ls
+perm-dir
+perm-file.sh
+```
+
 ## 확인한 항목
+- 파일 복사(`cp`)·이름 변경(`mv`)·삭제(`rm`) 명령과 `ls` 출력 기록
 - 파일 1개(`perm-file.sh`), 디렉토리 1개(`perm-dir`)에 대한 권한 변경 전/후 비교
 - `perm-file.sh`: `644`(rw-r--r--) → `755`(rwxr-xr-x)
 - `perm-dir`: `chmod 700` 적용

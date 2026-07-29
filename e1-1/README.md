@@ -90,16 +90,14 @@ Server:
 | # | 수행 항목 | 검증 방법 (사용 명령) | 결과 |
 |---|---|---|---|
 | 01 | 터미널 기본 조작 | `pwd`, `ls -la`, `mkdir`, `cd`, `touch`, `cat`, `cp`, `mv`, `rm` | [01-terminal-session.md](docs/logs/md/01-terminal-session.md) |
-| 02 | 권한 변경 실습 | `chmod 700` / `chmod 755` 적용 후 `ls -l` 전/후 비교 | [02-terminal-permissions.md](docs/logs/md/02-terminal-permissions.md) |
+| 02 | 권한 변경 실습 | `chmod 700` / `chmod 755` 전/후 `ls -l` 비교, `cp`/`mv`/`rm`로 실습 파일 정리 | [02-terminal-permissions.md](docs/logs/md/02-terminal-permissions.md) |
 | 03 | Docker 설치/점검 | `docker --version`, `docker info` | [03-docker-basic-session.md](docs/logs/md/03-docker-basic-session.md) |
 | 04 | Docker 기본 운영 + 컨테이너 실행 | `docker images`, `docker ps -a`, `docker logs`, `docker stats`, `docker run hello-world`, `docker run -it ubuntu bash` | [04-docker-run-session.md](docs/logs/md/04-docker-run-session.md) |
 | — | attach vs exec 차이 관찰 | `docker exec` 후 `exit` → 유지 / `docker attach` 후 `Ctrl+C` → 종료, `docker ps`로 전후 비교 | [attach-exec-session.md](docs/logs/md/attach-exec-session.md) |
 | 05 | 커스텀 이미지 빌드 + 포트 매핑 | `docker build`, `docker run -d -p 8080:8000` / `-p 8081:8000`, `curl`, 브라우저 접속 | [05-docker-build-session.md](docs/logs/md/05-docker-build-session.md) |
 | 05-1 | 포트 충돌 진단 | `lsof -nP -i :8080`으로 점유 프로세스 확인 후 호스트 포트를 8082로 변경 재실행 | [05-1-port-conflict-session.md](docs/logs/md/05-1-port-conflict-session.md) |
-| 06 | 바인드 마운트 + 볼륨 영속성 | 호스트 파일 수정 후 `docker exec cat`으로 반영 확인 / 컨테이너 삭제 후 새 컨테이너에서 데이터 유지 확인 | [06-volume-session.md](docs/logs/md/06-volume-session.md) |
-| 06-1 | 볼륨 백업/복원 | `tar czvf`로 볼륨 백업 → 원본 삭제 → 새 볼륨에 `tar xzvf`로 복원 후 데이터 일치 검증 | [06-1-volume-backup-session.md](docs/logs/md/06-1-volume-backup-session.md) |
-| 07 | Git 설정 + GitHub 연동 | `git config --list`, VSCode GitHub 로그인 화면 | [07-git-setup-session.md](docs/logs/md/07-git-setup-session.md) |
-| 07-1 | GitHub Push 로그 | `git push origin` 실행 명령 + 출력 (원격 반영 확인) | [07-1-git-push-session.md](docs/logs/md/07-1-git-push-session.md) |
+| 06 | 바인드 마운트 + 볼륨 영속성 + 백업/복원 | 호스트 파일 수정 반영 확인 / 컨테이너 삭제 후 데이터 유지 / `tar`로 볼륨 백업→삭제→복원 검증 | [06-volume-session.md](docs/logs/md/06-volume-session.md) |
+| 07 | Git 설정 + GitHub 연동 + Push | `git config --list`, VSCode 연동, `git push origin main` 원격 반영 출력 | [07-git-setup-session.md](docs/logs/md/07-git-setup-session.md) |
 
 ### 증거 자료 (스크린샷)
 

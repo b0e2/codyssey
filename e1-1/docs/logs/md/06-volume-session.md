@@ -51,7 +51,31 @@ hi
 
 **확인 결과**: `vol-test` 컨테이너를 완전히 삭제(`docker rm -f`)한 후, 같은 볼륨(`mydata`)을 연결한 새 컨테이너(`vol-test2`)에서 데이터(`hi`)가 그대로 유지됨을 확인했다. 볼륨은 컨테이너 생명주기와 독립적으로 데이터를 보존한다.
 
-## 3. 트러블슈팅
+## 3. 볼륨 백업 / 복원 (tar 아카이브)
+
+볼륨 영속성과 별개로, 볼륨을 파일로 백업해 두면 볼륨 자체가 삭제돼도 복구할 수 있다. 임시 `alpine` 컨테이너에 볼륨과 호스트 디렉토리를 함께 마운트해 `tar`로 아카이브한다.
+
+```
+# 볼륨(mydata)을 읽기전용으로 마운트해 tar 아카이브 생성
+$ docker run --rm -v mydata:/data:ro -v "$(pwd)":/backup alpine tar czvf /backup/mydata.tar.gz -C /data .
+./
+./hello.txt
+
+# 원본 볼륨을 완전히 삭제한 뒤, 새 볼륨에 복원
+$ docker volume rm mydata
+$ docker volume create mydata-restored
+$ docker run --rm -v mydata-restored:/data -v "$(pwd)":/backup alpine tar xzvf /backup/mydata.tar.gz -C /data
+./
+./hello.txt
+
+# 복원 검증
+$ docker run --rm -v mydata-restored:/data alpine cat /data/hello.txt
+hi
+```
+
+**확인 결과**: 원본 볼륨(`mydata`)을 삭제한 뒤에도 tar 아카이브로 새 볼륨(`mydata-restored`)에 데이터(`hi`)를 복원할 수 있었다. 영속성(컨테이너 삭제 후 유지)과 백업(볼륨 자체 손실 대비)은 서로 다른 층위의 안전장치다.
+
+## 4. 트러블슈팅
 
 **문제**: 실습 후 정리 과정에서 볼륨 삭제 시도 시 에러 발생
 
@@ -75,3 +99,4 @@ $ docker volume rm mydata
 
 - 바인드 마운트 실행 명령 + 호스트 변경 전/후 비교 완료
 - Docker 볼륨 생성/연결/검증 명령 + 컨테이너 삭제 전/후 비교 완료
+- 볼륨 백업(tar)→원본 삭제→새 볼륨 복원 과정 실행 로그 기록
