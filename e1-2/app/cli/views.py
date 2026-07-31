@@ -25,13 +25,14 @@ def data_recovered(quiz_count: int) -> str:
     return f"⚠️ 저장 파일이 손상되어 기본 퀴즈 {quiz_count}개로 복구했습니다."
 
 
-def category_menu(python_label: str, backend_label: str) -> str:
+def category_menu(python_label: str, backend_label: str, include_all: bool = True) -> str:
     lines = [
         "카테고리",
         f"  1. {python_label}",
         f"  2. {backend_label}",
-        "  3. 전체",
     ]
+    if include_all:
+        lines.append("  3. 전체")
     return "\n".join(lines)
 
 
@@ -52,3 +53,34 @@ def answer_feedback(correct: bool, answer: int) -> str:
 
 def play_result(correct: int, total: int, score: int) -> str:
     return f"🏆 결과: {total}문제 중 {correct}문제 정답 ({score}점)"
+
+
+def quiz_list(groups: dict[str, list], labels: dict[str, str], total: int) -> str:
+    lines = [f"📋 등록된 퀴즈 목록 (총 {total}개)"]
+    for category, quizzes in groups.items():
+        lines.append("")
+        lines.append(f"[{labels[category]}] {len(quizzes)}개")
+        if not quizzes:
+            lines.append("  (없음)")
+            continue
+        for order, quiz in enumerate(quizzes, start=1):
+            lines.append(f"  {order}. {quiz.question}")
+    return "\n".join(lines)
+
+
+def quiz_picker(quizzes: list) -> str:
+    lines = []
+    for order, quiz in enumerate(quizzes, start=1):
+        lines.append(f"  {order}. {quiz.question}")
+    return "\n".join(lines)
+
+
+def quiz_detail(quiz, labels: dict[str, str]) -> str:
+    lines = [
+        f"카테고리: {labels[quiz.category]}",
+        f"문제: {quiz.question}",
+        quiz.format_choices(),
+        f"정답: {quiz.answer}번",
+        f"힌트: {quiz.hint or '없음'}",
+    ]
+    return "\n".join(lines)
