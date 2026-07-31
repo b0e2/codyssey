@@ -184,3 +184,4 @@ codyssey-e1-2/
 - [x] 보너스: 랜덤 출제 on/off, 문제 수 선택, 힌트
 - [x] 기능 목록 · 파일 구조 · 데이터 파일 설명
 - [ ] 실행 화면 스크린샷 (`docs/screenshots/`)
+> 저장소: https://github.com/b0e2/codyssey-e1-2
