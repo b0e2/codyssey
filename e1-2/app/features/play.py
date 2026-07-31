@@ -1,5 +1,7 @@
 """퀴즈 출제와 채점을 담당한다. 화면 입출력은 하지 않는다."""
 
+import random
+
 from app.constants import CATEGORY_ALL
 from app.models.quiz import Quiz
 
@@ -11,9 +13,12 @@ def filter_by_category(quizzes: list[Quiz], category: str) -> list[Quiz]:
     return [quiz for quiz in quizzes if quiz.category == category]
 
 
-def prepare_quizzes(quizzes: list[Quiz], count: int) -> list[Quiz]:
-    """앞에서부터 count개만 골라 출제 목록을 만든다."""
-    return list(quizzes)[:count]
+def prepare_quizzes(quizzes: list[Quiz], count: int, shuffle: bool = False) -> list[Quiz]:
+    """출제 목록을 만든다. shuffle이 참이면 섞은 뒤 count개를 고른다."""
+    ordered = list(quizzes)
+    if shuffle:
+        random.shuffle(ordered)
+    return ordered[:count]
 
 
 class PlaySession:

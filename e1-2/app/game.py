@@ -97,7 +97,8 @@ class QuizGame:
             return
 
         count = read_int(f"문제 수 (1-{len(pool)}): ", 1, len(pool))
-        quizzes = prepare_quizzes(pool, count)
+        shuffle = self._ask_random_order()
+        quizzes = prepare_quizzes(pool, count, shuffle)
         session = PlaySession(quizzes)
         while True:
             quiz = session.current()
@@ -132,6 +133,10 @@ class QuizGame:
         )
         choice = read_int("선택: ", 1, 3)
         return {1: CATEGORY_PYTHON, 2: CATEGORY_BACKEND, 3: CATEGORY_ALL}[choice]
+
+    def _ask_random_order(self) -> bool:
+        print(views.order_menu())
+        return read_int("선택: ", 1, 2) == 1
 
     def _add(self) -> None:
         print("\n✅ 퀴즈 추가")
