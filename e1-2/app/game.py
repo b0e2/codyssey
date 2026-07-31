@@ -4,7 +4,7 @@ from app.cli import views
 from app.cli.prompts import read_int
 from app.constants import CATEGORIES, CATEGORY_LABELS
 from app.models.score import ScoreBoard
-from app.storage.repository import LOAD_CREATED, StateRepository
+from app.storage.repository import LOAD_CREATED, LOAD_RECOVERED, StateRepository
 
 MENU_LABELS = {
     1: "퀴즈 풀기",
@@ -47,6 +47,8 @@ class QuizGame:
         print(views.title(CATEGORIES, CATEGORY_LABELS))
         if state.status == LOAD_CREATED:
             print(views.data_created(len(self.quizzes)))
+        elif state.status == LOAD_RECOVERED:
+            print(views.data_recovered(len(self.quizzes)))
         else:
             print(views.data_loaded(len(self.quizzes), self.board.best_score))
 

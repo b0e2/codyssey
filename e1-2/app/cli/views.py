@@ -19,3 +19,7 @@ def data_created(quiz_count: int) -> str:
 
 def data_loaded(quiz_count: int, best_score: int) -> str:
     return f"📂 저장된 데이터를 불러왔습니다. (퀴즈 {quiz_count}개, 최고점수 {best_score}점)"
+
+
+def data_recovered(quiz_count: int) -> str:
+    return f"⚠️ 저장 파일이 손상되어 기본 퀴즈 {quiz_count}개로 복구했습니다."

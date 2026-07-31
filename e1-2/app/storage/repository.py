@@ -9,8 +9,9 @@ from app.models.score import ScoreBoard
 from app.storage.defaults import default_quizzes
 
 # 로드 결과 상태
-LOAD_CREATED = "created"    # 파일이 없어 기본 데이터로 시작
-LOAD_OK = "loaded"          # 정상 로드
+LOAD_CREATED = "created"      # 파일이 없어 기본 데이터로 시작
+LOAD_OK = "loaded"            # 정상 로드
+LOAD_RECOVERED = "recovered"  # 파일이 손상되어 기본 데이터로 복구
 
 
 class GameState:
@@ -33,10 +34,14 @@ class StateRepository:
         if not self.path.exists():
             return GameState(default_quizzes(), ScoreBoard(), LOAD_CREATED)
 
-        with open(self.path, encoding="utf-8") as file:
-            data = json.load(file)
-        quizzes = self._parse_quizzes(data)
-        board = ScoreBoard.from_dict(data)
+        try:
+            with open(self.path, encoding="utf-8") as file:
+                data = json.load(file)
+            quizzes = self._parse_quizzes(data)
+            board = ScoreBoard.from_dict(data)
+        except (OSError, json.JSONDecodeError, ValueError):
+            return GameState(default_quizzes(), ScoreBoard(), LOAD_RECOVERED)
+
         return GameState(quizzes, board, LOAD_OK)
 
     def _parse_quizzes(self, data: dict) -> list[Quiz]:
