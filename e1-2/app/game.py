@@ -20,7 +20,7 @@ from app.constants import (
     MIN_ANSWER,
 )
 from app.features.catalog import QuizCatalog
-from app.features.play import PlaySession, filter_by_category
+from app.features.play import PlaySession, filter_by_category, prepare_quizzes
 from app.features.score import ScoreService
 from app.models.quiz import Quiz
 from app.models.score import ScoreBoard
@@ -91,11 +91,14 @@ class QuizGame:
 
         print("\n❓ 퀴즈 풀기")
         category = self._select_category()
-        quizzes = filter_by_category(self.quizzes, category)
-        if not quizzes:
+        pool = filter_by_category(self.quizzes, category)
+        if not pool:
             print("⚠️ 해당 카테고리에 퀴즈가 없습니다.")
             return
 
+        count = read_int(f"문제 수 (1-{len(pool)}): ", 1, len(pool))
+        shuffle = self._ask_random_order()
+        quizzes = prepare_quizzes(pool, count, shuffle)
         session = PlaySession(quizzes)
         while True:
             quiz = session.current()
@@ -103,7 +106,7 @@ class QuizGame:
                 break
             print()
             print(views.quiz_question(session.position(), session.total, quiz))
-            number = read_int("정답 입력 (1-4): ", MIN_ANSWER, MAX_ANSWER)
+            number = self._read_answer(session)
             correct = session.submit(number)
             print(views.answer_feedback(correct, quiz.answer))
 
@@ -130,6 +133,30 @@ class QuizGame:
         )
         choice = read_int("선택: ", 1, 3)
         return {1: CATEGORY_PYTHON, 2: CATEGORY_BACKEND, 3: CATEGORY_ALL}[choice]
+
+    def _ask_random_order(self) -> bool:
+        print(views.order_menu())
+        return read_int("선택: ", 1, 2) == 1
+
+    def _read_answer(self, session: PlaySession) -> int:
+        """정답 번호를 받는다. 'h'를 입력하면 힌트를 보여주고 다시 받는다."""
+        while True:
+            text = read_text("정답 입력 (1-4, 힌트는 h): ")
+            if text.lower() == "h":
+                hint = session.reveal_hint()
+                if hint:
+                    print(f"🔍 힌트: {hint}  (이 문항 점수 50% 차감)")
+                else:
+                    print("🔍 이 문항에는 힌트가 없습니다.")
+                continue
+            if not text.isdigit():
+                print("⚠️ 숫자(1-4) 또는 h를 입력해 주세요.")
+                continue
+            number = int(text)
+            if not (MIN_ANSWER <= number <= MAX_ANSWER):
+                print(f"⚠️ {MIN_ANSWER}에서 {MAX_ANSWER} 사이의 숫자를 입력해 주세요.")
+                continue
+            return number
 
     def _add(self) -> None:
         print("\n✅ 퀴즈 추가")

@@ -36,6 +36,10 @@ def category_menu(python_label: str, backend_label: str, include_all: bool = Tru
     return "\n".join(lines)
 
 
+def order_menu() -> str:
+    return "\n".join(["출제 순서", "  1. 랜덤", "  2. 등록 순서"])
+
+
 def quiz_question(position: int, total: int, quiz) -> str:
     lines = [
         f"[문제 {position}/{total}]",
