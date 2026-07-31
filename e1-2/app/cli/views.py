@@ -52,3 +52,23 @@ def answer_feedback(correct: bool, answer: int) -> str:
 
 def play_result(correct: int, total: int, score: int) -> str:
     return f"🏆 결과: {total}문제 중 {correct}문제 정답 ({score}점)"
+
+
+def quiz_list(groups: dict[str, list], labels: dict[str, str], total: int) -> str:
+    lines = [f"📋 등록된 퀴즈 목록 (총 {total}개)"]
+    for category, quizzes in groups.items():
+        lines.append("")
+        lines.append(f"[{labels[category]}] {len(quizzes)}개")
+        if not quizzes:
+            lines.append("  (없음)")
+            continue
+        for order, quiz in enumerate(quizzes, start=1):
+            lines.append(f"  {order}. {quiz.question}")
+    return "\n".join(lines)
+
+
+def quiz_picker(quizzes: list) -> str:
+    lines = []
+    for order, quiz in enumerate(quizzes, start=1):
+        lines.append(f"  {order}. {quiz.question}")
+    return "\n".join(lines)

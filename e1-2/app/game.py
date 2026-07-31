@@ -11,6 +11,7 @@ from app.constants import (
     MAX_ANSWER,
     MIN_ANSWER,
 )
+from app.features.catalog import QuizCatalog
 from app.features.play import PlaySession, filter_by_category
 from app.models.score import ScoreBoard
 from app.storage.repository import LOAD_CREATED, LOAD_RECOVERED, StateRepository
@@ -112,7 +113,12 @@ class QuizGame:
         print("(준비 중) 퀴즈 추가")
 
     def _list(self) -> None:
-        print("(준비 중) 퀴즈 목록")
+        if not self.quizzes:
+            print("⚠️ 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가해 주세요.")
+            return
+        catalog = QuizCatalog(self.quizzes)
+        print()
+        print(views.quiz_list(catalog.grouped(), CATEGORY_LABELS, len(self.quizzes)))
 
     def _edit(self) -> None:
         print("(준비 중) 퀴즈 수정")
