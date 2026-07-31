@@ -11,6 +11,11 @@ def filter_by_category(quizzes: list[Quiz], category: str) -> list[Quiz]:
     return [quiz for quiz in quizzes if quiz.category == category]
 
 
+def prepare_quizzes(quizzes: list[Quiz], count: int) -> list[Quiz]:
+    """앞에서부터 count개만 골라 출제 목록을 만든다."""
+    return list(quizzes)[:count]
+
+
 class PlaySession:
     """한 번의 풀이 진행 상태(현재 문제, 정답 수, 힌트 수)를 관리한다."""
 

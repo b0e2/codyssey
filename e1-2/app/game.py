@@ -20,7 +20,7 @@ from app.constants import (
     MIN_ANSWER,
 )
 from app.features.catalog import QuizCatalog
-from app.features.play import PlaySession, filter_by_category
+from app.features.play import PlaySession, filter_by_category, prepare_quizzes
 from app.features.score import ScoreService
 from app.models.quiz import Quiz
 from app.models.score import ScoreBoard
@@ -91,11 +91,13 @@ class QuizGame:
 
         print("\n❓ 퀴즈 풀기")
         category = self._select_category()
-        quizzes = filter_by_category(self.quizzes, category)
-        if not quizzes:
+        pool = filter_by_category(self.quizzes, category)
+        if not pool:
             print("⚠️ 해당 카테고리에 퀴즈가 없습니다.")
             return
 
+        count = read_int(f"문제 수 (1-{len(pool)}): ", 1, len(pool))
+        quizzes = prepare_quizzes(pool, count)
         session = PlaySession(quizzes)
         while True:
             quiz = session.current()
