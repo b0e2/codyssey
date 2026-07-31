@@ -1,16 +1,61 @@
 """게임 전체 흐름을 관리한다."""
 
+from app.cli import views
+from app.cli.prompts import read_int
 from app.constants import CATEGORIES, CATEGORY_LABELS
+
+MENU_LABELS = {
+    1: "퀴즈 풀기",
+    2: "퀴즈 추가",
+    3: "퀴즈 목록",
+    4: "퀴즈 수정",
+    5: "퀴즈 삭제",
+    6: "점수 확인",
+    7: "종료",
+}
 
 
 class QuizGame:
     """메뉴를 표시하고 각 기능으로 흐름을 분배한다."""
 
     def run(self) -> None:
-        print("=" * 40)
-        print("        🐍 파이썬 퀴즈 게임 🐍")
-        print("=" * 40)
-        for category in CATEGORIES:
-            print(f"  - {CATEGORY_LABELS[category]}")
-        print("=" * 40)
-        # TODO : 기능 분배 
+        print(views.title(CATEGORIES, CATEGORY_LABELS))
+        while True:
+            handlers = self._handlers()
+            print()
+            print(views.menu(MENU_LABELS))
+            choice = read_int("선택: ", 1, len(MENU_LABELS))
+            handler = handlers[choice]
+            if handler is None:
+                print("👋 게임을 종료합니다.")
+                break
+            handler()
+
+    def _handlers(self) -> dict:
+        return {
+            1: self._play,
+            2: self._add,
+            3: self._list,
+            4: self._edit,
+            5: self._delete,
+            6: self._score,
+            7: None,
+        }
+
+    def _play(self) -> None:
+        print("(준비 중) 퀴즈 풀기")
+
+    def _add(self) -> None:
+        print("(준비 중) 퀴즈 추가")
+
+    def _list(self) -> None:
+        print("(준비 중) 퀴즈 목록")
+
+    def _edit(self) -> None:
+        print("(준비 중) 퀴즈 수정")
+
+    def _delete(self) -> None:
+        print("(준비 중) 퀴즈 삭제")
+
+    def _score(self) -> None:
+        print("(준비 중) 점수 확인")
