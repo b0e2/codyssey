@@ -2,7 +2,16 @@
 
 from app.cli import views
 from app.cli.prompts import read_int
-from app.constants import CATEGORIES, CATEGORY_LABELS
+from app.constants import (
+    CATEGORIES,
+    CATEGORY_ALL,
+    CATEGORY_BACKEND,
+    CATEGORY_LABELS,
+    CATEGORY_PYTHON,
+    MAX_ANSWER,
+    MIN_ANSWER,
+)
+from app.features.play import PlaySession, filter_by_category
 from app.models.score import ScoreBoard
 from app.storage.repository import LOAD_CREATED, LOAD_RECOVERED, StateRepository
 
@@ -64,7 +73,40 @@ class QuizGame:
         }
 
     def _play(self) -> None:
-        print("(준비 중) 퀴즈 풀기")
+        if not self.quizzes:
+            print("⚠️ 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가해 주세요.")
+            return
+
+        print("\n❓ 퀴즈 풀기")
+        category = self._select_category()
+        quizzes = filter_by_category(self.quizzes, category)
+        if not quizzes:
+            print("⚠️ 해당 카테고리에 퀴즈가 없습니다.")
+            return
+
+        session = PlaySession(quizzes)
+        while True:
+            quiz = session.current()
+            if quiz is None:
+                break
+            print()
+            print(views.quiz_question(session.position(), session.total, quiz))
+            number = read_int("정답 입력 (1-4): ", MIN_ANSWER, MAX_ANSWER)
+            correct = session.submit(number)
+            print(views.answer_feedback(correct, quiz.answer))
+
+        print()
+        print(views.play_result(session.correct, session.total, session.score()))
+
+    def _select_category(self) -> str:
+        print(
+            views.category_menu(
+                CATEGORY_LABELS[CATEGORY_PYTHON],
+                CATEGORY_LABELS[CATEGORY_BACKEND],
+            )
+        )
+        choice = read_int("선택: ", 1, 3)
+        return {1: CATEGORY_PYTHON, 2: CATEGORY_BACKEND, 3: CATEGORY_ALL}[choice]
 
     def _add(self) -> None:
         print("(준비 중) 퀴즈 추가")

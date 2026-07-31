@@ -30,3 +30,6 @@ CATEGORY_LABELS = {
 }
 
 CATEGORIES = tuple(CATEGORY_LABELS)
+
+# 퀴즈 풀기에서 "전체"를 고를 때 쓰는 값 (실제 카테고리가 아니라 선택용)
+CATEGORY_ALL = "all"
