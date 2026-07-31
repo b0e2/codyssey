@@ -15,6 +15,7 @@ from app.constants import (
     CATEGORY_LABELS,
     CATEGORY_PYTHON,
     CHOICE_COUNT,
+    HISTORY_DISPLAY_COUNT,
     MAX_ANSWER,
     MIN_ANSWER,
 )
@@ -228,4 +229,11 @@ class QuizGame:
         print("🗑️ 퀴즈가 삭제되었습니다.")
 
     def _score(self) -> None:
-        print("(준비 중) 점수 확인")
+        if not self.board.records:
+            print("\n🏆 아직 푼 기록이 없습니다. 퀴즈를 먼저 풀어 보세요.")
+            return
+
+        service = ScoreService(self.board)
+        recent = service.recent_records(HISTORY_DISPLAY_COUNT)
+        print()
+        print(views.score_board(self.board, recent, CATEGORY_LABELS))

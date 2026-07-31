@@ -75,6 +75,24 @@ def quiz_picker(quizzes: list) -> str:
     return "\n".join(lines)
 
 
+def score_board(board, recent: list, labels: dict[str, str]) -> str:
+    lines = [f"🏆 최고 점수: {board.best_score}점", "", "카테고리별 최고점"]
+    for category, label in labels.items():
+        best = board.best_by_category.get(category)
+        shown = f"{best}점" if best is not None else "기록 없음"
+        lines.append(f"  - {label}: {shown}")
+
+    lines.append("")
+    lines.append("최근 기록")
+    for record in recent:
+        category_label = labels.get(record.category, "전체")
+        lines.append(
+            f"  {record.played_at} | {category_label} | "
+            f"{record.correct}/{record.total} | {record.score}점 | 힌트 {record.hints_used}"
+        )
+    return "\n".join(lines)
+
+
 def quiz_detail(quiz, labels: dict[str, str]) -> str:
     lines = [
         f"카테고리: {labels[quiz.category]}",
