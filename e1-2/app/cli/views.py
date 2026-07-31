@@ -73,3 +73,14 @@ def quiz_picker(quizzes: list) -> str:
     for order, quiz in enumerate(quizzes, start=1):
         lines.append(f"  {order}. {quiz.question}")
     return "\n".join(lines)
+
+
+def quiz_detail(quiz, labels: dict[str, str]) -> str:
+    lines = [
+        f"카테고리: {labels[quiz.category]}",
+        f"문제: {quiz.question}",
+        quiz.format_choices(),
+        f"정답: {quiz.answer}번",
+        f"힌트: {quiz.hint or '없음'}",
+    ]
+    return "\n".join(lines)

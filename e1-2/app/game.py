@@ -1,7 +1,7 @@
 """게임 전체 흐름을 관리한다."""
 
 from app.cli import views
-from app.cli.prompts import read_int, read_text, read_text_optional
+from app.cli.prompts import read_int, read_int_optional, read_text, read_text_optional
 from app.constants import (
     CATEGORIES,
     CATEGORY_ALL,
@@ -144,7 +144,52 @@ class QuizGame:
         print(views.quiz_list(catalog.grouped(), CATEGORY_LABELS, len(self.quizzes)))
 
     def _edit(self) -> None:
-        print("(준비 중) 퀴즈 수정")
+        if not self.quizzes:
+            print("⚠️ 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가해 주세요.")
+            return
+
+        print("\n✏️ 퀴즈 수정")
+        print(views.quiz_picker(self.quizzes))
+        index = read_int("수정할 번호: ", 1, len(self.quizzes)) - 1
+        quiz = self.quizzes[index]
+
+        print()
+        print(views.quiz_detail(quiz, CATEGORY_LABELS))
+        print("\n(빈 입력은 기존 값 유지)")
+
+        question = read_text_optional(f"문제 [{quiz.question}]: ") or quiz.question
+        choices = []
+        for order, current in enumerate(quiz.choices, start=1):
+            value = read_text_optional(f"선택지 {order} [{current}]: ") or current
+            choices.append(value)
+
+        answer = read_int_optional(
+            f"정답 번호 ({MIN_ANSWER}-{MAX_ANSWER}) [{quiz.answer}]: ", MIN_ANSWER, MAX_ANSWER
+        )
+        if answer is None:
+            answer = quiz.answer
+
+        category = self._edit_quiz_category(quiz.category)
+
+        hint_input = read_text_optional(f"힌트 [{quiz.hint or '없음'}]: ")
+        hint = quiz.hint if hint_input == "" else hint_input
+
+        updated = Quiz(question, choices, answer, category, hint)
+        QuizCatalog(self.quizzes).replace(index, updated)
+        print("✏️ 퀴즈가 수정되었습니다.")
+
+    def _edit_quiz_category(self, current: str) -> str:
+        print(
+            views.category_menu(
+                CATEGORY_LABELS[CATEGORY_PYTHON],
+                CATEGORY_LABELS[CATEGORY_BACKEND],
+                include_all=False,
+            )
+        )
+        choice = read_int_optional("카테고리 (Enter=유지): ", 1, 2)
+        if choice is None:
+            return current
+        return {1: CATEGORY_PYTHON, 2: CATEGORY_BACKEND}[choice]
 
     def _delete(self) -> None:
         print("(준비 중) 퀴즈 삭제")
