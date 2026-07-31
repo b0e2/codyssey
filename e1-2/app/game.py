@@ -27,7 +27,6 @@ class QuizGame:
             choice = read_int("선택: ", 1, len(MENU_LABELS))
             handler = handlers[choice]
             if handler is None:
-                print("👋 게임을 종료합니다.")
                 break
             handler()
 
