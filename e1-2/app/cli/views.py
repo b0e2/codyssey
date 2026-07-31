@@ -25,13 +25,14 @@ def data_recovered(quiz_count: int) -> str:
     return f"⚠️ 저장 파일이 손상되어 기본 퀴즈 {quiz_count}개로 복구했습니다."
 
 
-def category_menu(python_label: str, backend_label: str) -> str:
+def category_menu(python_label: str, backend_label: str, include_all: bool = True) -> str:
     lines = [
         "카테고리",
         f"  1. {python_label}",
         f"  2. {backend_label}",
-        "  3. 전체",
     ]
+    if include_all:
+        lines.append("  3. 전체")
     return "\n".join(lines)
 
 

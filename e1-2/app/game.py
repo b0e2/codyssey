@@ -1,18 +1,20 @@
 """게임 전체 흐름을 관리한다."""
 
 from app.cli import views
-from app.cli.prompts import read_int
+from app.cli.prompts import read_int, read_text, read_text_optional
 from app.constants import (
     CATEGORIES,
     CATEGORY_ALL,
     CATEGORY_BACKEND,
     CATEGORY_LABELS,
     CATEGORY_PYTHON,
+    CHOICE_COUNT,
     MAX_ANSWER,
     MIN_ANSWER,
 )
 from app.features.catalog import QuizCatalog
 from app.features.play import PlaySession, filter_by_category
+from app.models.quiz import Quiz
 from app.models.score import ScoreBoard
 from app.storage.repository import LOAD_CREATED, LOAD_RECOVERED, StateRepository
 
@@ -46,6 +48,7 @@ class QuizGame:
             if handler is None:
                 break
             handler()
+            self.save()
 
     def save(self) -> None:
         self.repository.save(self.quizzes, self.board)
@@ -110,7 +113,27 @@ class QuizGame:
         return {1: CATEGORY_PYTHON, 2: CATEGORY_BACKEND, 3: CATEGORY_ALL}[choice]
 
     def _add(self) -> None:
-        print("(준비 중) 퀴즈 추가")
+        print("\n✅ 퀴즈 추가")
+        question = read_text("문제: ")
+        choices = [read_text(f"선택지 {i}: ") for i in range(1, CHOICE_COUNT + 1)]
+        answer = read_int(f"정답 번호 ({MIN_ANSWER}-{MAX_ANSWER}): ", MIN_ANSWER, MAX_ANSWER)
+        category = self._select_quiz_category()
+        hint = read_text_optional("힌트 (없으면 Enter): ") or None
+
+        quiz = Quiz(question, choices, answer, category, hint)
+        QuizCatalog(self.quizzes).add(quiz)
+        print("✅ 퀴즈가 추가되었습니다.")
+
+    def _select_quiz_category(self) -> str:
+        print(
+            views.category_menu(
+                CATEGORY_LABELS[CATEGORY_PYTHON],
+                CATEGORY_LABELS[CATEGORY_BACKEND],
+                include_all=False,
+            )
+        )
+        choice = read_int("카테고리 선택: ", 1, 2)
+        return {1: CATEGORY_PYTHON, 2: CATEGORY_BACKEND}[choice]
 
     def _list(self) -> None:
         if not self.quizzes:
