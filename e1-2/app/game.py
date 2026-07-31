@@ -15,11 +15,13 @@ from app.constants import (
     CATEGORY_LABELS,
     CATEGORY_PYTHON,
     CHOICE_COUNT,
+    HISTORY_DISPLAY_COUNT,
     MAX_ANSWER,
     MIN_ANSWER,
 )
 from app.features.catalog import QuizCatalog
 from app.features.play import PlaySession, filter_by_category
+from app.features.score import ScoreService
 from app.models.quiz import Quiz
 from app.models.score import ScoreBoard
 from app.storage.repository import LOAD_CREATED, LOAD_RECOVERED, StateRepository
@@ -107,6 +109,17 @@ class QuizGame:
 
         print()
         print(views.play_result(session.correct, session.total, session.score()))
+
+        service = ScoreService(self.board)
+        is_best = service.record_play(
+            category,
+            session.total,
+            session.correct,
+            session.score(),
+            session.hints_used,
+        )
+        if is_best:
+            print("🏆 새로운 최고 점수입니다!")
 
     def _select_category(self) -> str:
         print(
@@ -216,4 +229,11 @@ class QuizGame:
         print("🗑️ 퀴즈가 삭제되었습니다.")
 
     def _score(self) -> None:
-        print("(준비 중) 점수 확인")
+        if not self.board.records:
+            print("\n🏆 아직 푼 기록이 없습니다. 퀴즈를 먼저 풀어 보세요.")
+            return
+
+        service = ScoreService(self.board)
+        recent = service.recent_records(HISTORY_DISPLAY_COUNT)
+        print()
+        print(views.score_board(self.board, recent, CATEGORY_LABELS))
