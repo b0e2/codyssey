@@ -20,6 +20,7 @@ from app.constants import (
 )
 from app.features.catalog import QuizCatalog
 from app.features.play import PlaySession, filter_by_category
+from app.features.score import ScoreService
 from app.models.quiz import Quiz
 from app.models.score import ScoreBoard
 from app.storage.repository import LOAD_CREATED, LOAD_RECOVERED, StateRepository
@@ -107,6 +108,17 @@ class QuizGame:
 
         print()
         print(views.play_result(session.correct, session.total, session.score()))
+
+        service = ScoreService(self.board)
+        is_best = service.record_play(
+            category,
+            session.total,
+            session.correct,
+            session.score(),
+            session.hints_used,
+        )
+        if is_best:
+            print("🏆 새로운 최고 점수입니다!")
 
     def _select_category(self) -> str:
         print(
