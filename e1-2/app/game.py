@@ -3,6 +3,8 @@
 from app.cli import views
 from app.cli.prompts import read_int
 from app.constants import CATEGORIES, CATEGORY_LABELS
+from app.models.score import ScoreBoard
+from app.storage.repository import LOAD_CREATED, StateRepository
 
 MENU_LABELS = {
     1: "퀴즈 풀기",
@@ -18,8 +20,13 @@ MENU_LABELS = {
 class QuizGame:
     """메뉴를 표시하고 각 기능으로 흐름을 분배한다."""
 
+    def __init__(self, repository: StateRepository) -> None:
+        self.repository = repository
+        self.quizzes = []
+        self.board = ScoreBoard()
+
     def run(self) -> None:
-        print(views.title(CATEGORIES, CATEGORY_LABELS))
+        self._load()
         while True:
             handlers = self._handlers()
             print()
@@ -29,6 +36,19 @@ class QuizGame:
             if handler is None:
                 break
             handler()
+
+    def save(self) -> None:
+        self.repository.save(self.quizzes, self.board)
+
+    def _load(self) -> None:
+        state = self.repository.load()
+        self.quizzes = state.quizzes
+        self.board = state.board
+        print(views.title(CATEGORIES, CATEGORY_LABELS))
+        if state.status == LOAD_CREATED:
+            print(views.data_created(len(self.quizzes)))
+        else:
+            print(views.data_loaded(len(self.quizzes), self.board.best_score))
 
     def _handlers(self) -> dict:
         return {
