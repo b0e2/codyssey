@@ -1,7 +1,13 @@
 """게임 전체 흐름을 관리한다."""
 
 from app.cli import views
-from app.cli.prompts import read_int, read_int_optional, read_text, read_text_optional
+from app.cli.prompts import (
+    read_int,
+    read_int_optional,
+    read_text,
+    read_text_optional,
+    read_yes_no,
+)
 from app.constants import (
     CATEGORIES,
     CATEGORY_ALL,
@@ -192,7 +198,22 @@ class QuizGame:
         return {1: CATEGORY_PYTHON, 2: CATEGORY_BACKEND}[choice]
 
     def _delete(self) -> None:
-        print("(준비 중) 퀴즈 삭제")
+        if not self.quizzes:
+            print("⚠️ 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가해 주세요.")
+            return
+
+        print("\n🗑️ 퀴즈 삭제")
+        print(views.quiz_picker(self.quizzes))
+        index = read_int("삭제할 번호: ", 1, len(self.quizzes)) - 1
+        quiz = self.quizzes[index]
+
+        print(f"\n선택한 문제: {quiz.question}")
+        if not read_yes_no("정말 삭제하시겠습니까? (y/n): "):
+            print("삭제를 취소했습니다.")
+            return
+
+        QuizCatalog(self.quizzes).remove(index)
+        print("🗑️ 퀴즈가 삭제되었습니다.")
 
     def _score(self) -> None:
         print("(준비 중) 점수 확인")

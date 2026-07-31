@@ -51,6 +51,17 @@ def read_int_optional(label: str, min_value: int, max_value: int) -> int | None:
         return value
 
 
+def read_yes_no(label: str) -> bool:
+    """y/n 입력을 받아 참/거짓으로 돌려준다."""
+    while True:
+        text = _read_raw(label).strip().lower()
+        if text in ("y", "yes"):
+            return True
+        if text in ("n", "no"):
+            return False
+        print("⚠️ y 또는 n으로 입력해 주세요.")
+
+
 def _read_raw(label: str) -> str:
     try:
         return input(label)
