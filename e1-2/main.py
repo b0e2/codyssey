@@ -2,14 +2,17 @@
 
 from app.cli.prompts import ExitRequested
 from app.game import QuizGame
+from app.storage.repository import StateRepository
 
 
 def main() -> None:
-    game = QuizGame()
+    repository = StateRepository()
+    game = QuizGame(repository)
     try:
         game.run()
     except ExitRequested:
         pass
+    game.save()
     print("👋 게임을 종료합니다.")
 
 
