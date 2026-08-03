@@ -19,6 +19,8 @@
 - Python 3.10 이상
 - 표준 라이브러리만 사용 (외부 패키지 없음)
 
+![개발 환경](docs/screenshots/devenv.png)
+
 ## 실행 방법
 
 ```bash
@@ -61,6 +63,28 @@ python main.py
 - **퀴즈 수정 / 카테고리 분류** — 등록된 문항을 수정하고, 파이썬 문법과 백엔드 기초로 나눠 관리합니다.
 
 프로그램 실행 중 `Ctrl+C`(KeyboardInterrupt)나 입력 종료(EOFError)가 발생해도 비정상 종료 없이 저장 후 안전하게 종료합니다. 저장 파일이 없으면 기본 데이터로 시작하고, 손상된 경우 안내 후 기본 데이터로 복구합니다.
+
+## 실행 화면
+
+**메뉴 (첫 실행 · 기본 데이터 로드)**
+
+![메뉴 화면](docs/screenshots/menu.png)
+
+**퀴즈 추가**
+
+![퀴즈 추가](docs/screenshots/add_quiz.png)
+
+**퀴즈 풀기 (카테고리 · 문제 수 · 출제 순서 · 힌트)**
+
+![퀴즈 풀기](docs/screenshots/play.png)
+
+**점수 확인 (최고점 · 카테고리별 최고점 · 최근 기록)**
+
+![점수 확인](docs/screenshots/score.png)
+
+**커밋 그래프**
+
+![git log 그래프](docs/screenshots/gitlog.png)
 
 ## 카테고리
 
@@ -183,4 +207,5 @@ codyssey-e1-2/
 - [x] 최고 점수(전체 · 카테고리별)와 기록
 - [x] 보너스: 랜덤 출제 on/off, 문제 수 선택, 힌트
 - [x] 기능 목록 · 파일 구조 · 데이터 파일 설명
-- [ ] 실행 화면 스크린샷 (`docs/screenshots/`)
+- [x] 실행 화면 스크린샷 (`docs/screenshots/`)
+> 저장소: https://github.com/b0e2/codyssey-e1-2
