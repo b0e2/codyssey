@@ -140,12 +140,80 @@ def measure_mac_ms(pattern, filt, repeat=10):
 
 
 # ---------------------------------------------------------------------------
-# 모드 (이후 커밋에서 구현)
+# 콘솔 입력 헬퍼
+# ---------------------------------------------------------------------------
+
+def read_matrix(n, title):
+    """콘솔에서 n x n 행렬을 한 줄씩(공백 구분) 입력받는다.
+
+    각 줄은 정확히 n개의 숫자를 공백으로 구분해 입력해야 한다.
+    행/열 개수 불일치 또는 숫자 파싱 실패 시 안내 문구를 출력하고
+    해당 줄을 다시 입력받는다(재입력 유도).
+    """
+    print(title)
+    matrix = create_matrix(n)
+    row = 0
+    while row < n:
+        line = input()
+        tokens = line.split()
+        if len(tokens) != n:
+            print(
+                "입력 형식 오류: 각 줄에 {0}개의 숫자를 공백으로 구분해 "
+                "입력하세요. (현재 {1}개)".format(n, len(tokens))
+            )
+            continue
+        try:
+            values = [float(tok) for tok in tokens]
+        except ValueError:
+            print("입력 형식 오류: 숫자만 입력하세요. (예: 0 1 0)")
+            continue
+        for col in range(n):
+            set_cell(matrix, row, col, values[col])
+        row += 1
+    return matrix
+
+
+# ---------------------------------------------------------------------------
+# 모드 1: 사용자 입력(3x3)
 # ---------------------------------------------------------------------------
 
 def run_mode1():
-    """모드 1: 사용자 입력(3x3). 후속 커밋에서 구현."""
-    print("[모드 1] 아직 구현되지 않았습니다.")
+    """필터 A/B와 패턴을 3x3로 입력받아 MAC 점수·판정·연산 시간을 출력한다."""
+    print("#----------------------------------------")
+    print("# [1] 필터 입력")
+    print("#----------------------------------------")
+    filter_a = read_matrix(3, "필터 A (3줄 입력, 공백 구분)")
+    print("  -> 필터 A 저장 완료")
+    print()
+    filter_b = read_matrix(3, "필터 B (3줄 입력, 공백 구분)")
+    print("  -> 필터 B 저장 완료")
+    print()
+
+    print("#----------------------------------------")
+    print("# [2] 패턴 입력")
+    print("#----------------------------------------")
+    pattern = read_matrix(3, "패턴 (3줄 입력, 공백 구분)")
+    print("  -> 패턴 저장 완료")
+    print()
+
+    score_a = mac_2d(pattern, filter_a)
+    score_b = mac_2d(pattern, filter_b)
+    avg_ms = (measure_mac_ms(pattern, filter_a) +
+              measure_mac_ms(pattern, filter_b)) / 2.0
+
+    # 필터 A/B 기준 판정(동점은 판정 불가).
+    if abs(score_a - score_b) < EPSILON:
+        verdict = "판정 불가 (|A-B| < {0})".format(EPSILON)
+    else:
+        verdict = "A" if score_a > score_b else "B"
+
+    print("#----------------------------------------")
+    print("# [3] MAC 결과")
+    print("#----------------------------------------")
+    print("A 점수: {0}".format(score_a))
+    print("B 점수: {0}".format(score_b))
+    print("연산 시간(평균/10회): {0:.3f} ms".format(avg_ms))
+    print("판정: {0}".format(verdict))
 
 
 def run_mode2():
