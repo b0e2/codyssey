@@ -140,6 +140,35 @@ def measure_mac_ms(pattern, filt, repeat=10):
 
 
 # ---------------------------------------------------------------------------
+# 성능 분석
+# ---------------------------------------------------------------------------
+
+def _sample_matrix(n):
+    """성능 측정용 n x n 표본 행렬. 0이 아닌 값이 섞이도록 결정적으로 채운다."""
+    matrix = create_matrix(n)
+    for i in range(n):
+        for j in range(n):
+            set_cell(matrix, i, j, float((i * n + j) % 3) + 0.5)
+    return matrix
+
+
+def performance_analysis(sizes, repeat=10):
+    """크기별 MAC 연산의 평균 시간(ms)과 연산 횟수(N^2)를 표로 출력한다.
+
+    각 크기마다 표본 패턴/필터를 만들어 repeat 회 반복 측정한다.
+    I/O 시간을 제외하고 순수 연산 구간(measure_mac_ms)만 측정한다.
+    """
+    print("크기       평균 시간(ms)    연산 횟수(N^2)")
+    print("---------------------------------------------")
+    for n in sizes:
+        pattern = _sample_matrix(n)
+        filt = _sample_matrix(n)
+        avg_ms = measure_mac_ms(pattern, filt, repeat=repeat)
+        label = "{0}x{0}".format(n)
+        print("{0:<10} {1:>12.4f}    {2:>10}".format(label, avg_ms, n * n))
+
+
+# ---------------------------------------------------------------------------
 # 콘솔 입력 헬퍼
 # ---------------------------------------------------------------------------
 
@@ -214,6 +243,12 @@ def run_mode1():
     print("B 점수: {0}".format(score_b))
     print("연산 시간(평균/10회): {0:.3f} ms".format(avg_ms))
     print("판정: {0}".format(verdict))
+    print()
+
+    print("#----------------------------------------")
+    print("# [4] 성능 분석 (평균/10회)")
+    print("#----------------------------------------")
+    performance_analysis([3])
 
 
 def run_mode2():
