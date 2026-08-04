@@ -66,6 +66,37 @@ python main.py       # (또는 python3 main.py)
 
 ---
 
+## 프로젝트 구조
+
+책임(계층)별로 `npu` 패키지에 분리했습니다. 하위 계층일수록 의존성이 적고, 상위
+계층(`cli`)이 이들을 조립합니다. 의존 방향은 `core ← bench/dataset ← cli ← main`
+단방향(순환 없음)입니다.
+
+```
+main.py              # 진입점: 메뉴 출력 + 모드 디스패치만
+npu/
+├── core.py          # 상수/정책, 라벨 정규화, 행렬 자료구조, MAC 연산·판정 (최하위)
+├── dataset.py       # data.json 로드, 스키마/크기 검증, 케이스 판정
+├── bench.py         # 성능 측정(2D·1D) 및 패턴 생성기
+└── cli.py           # 콘솔 입력 헬퍼 + 실행 흐름(run_mode1/2, 보너스)
+tests/
+├── test_core.py     # 라벨·행렬·MAC·판정 단위 테스트
+└── test_dataset.py  # 키 파싱·필터 정규화·케이스 판정·실제 data.json 검증
+data/
+└── data.json        # 필터(5/13/25)와 패턴(input/expected)
+```
+
+### 테스트 실행
+
+```bash
+python -m unittest discover -s tests    # (또는 python3)
+```
+
+표준 라이브러리 `unittest`만 사용하며, 모듈 분리 덕분에 UI(입력/출력) 없이 핵심
+로직(`core`, `dataset`)만 독립적으로 검증할 수 있습니다.
+
+---
+
 ## 구현 요약
 
 - **데이터 구조:** N×N 행렬을 2차원 리스트로 표현하고, `create_matrix` / `get_cell` /
