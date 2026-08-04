@@ -251,9 +251,174 @@ def run_mode1():
     performance_analysis([3])
 
 
+def load_data(path):
+    """data.json 을 읽어 파이썬 딕셔너리로 반환한다.
+
+    파일이 없거나 JSON 파싱에 실패하면 예외를 그대로 올려 상위에서 안내한다.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def parse_size_from_key(key):
+    """'size_5_1' 형태의 패턴 키에서 크기 N(정수)을 추출한다."""
+    parts = key.split("_")
+    if len(parts) < 2 or parts[0] != "size":
+        raise ValueError("패턴 키 형식 오류: {!r}".format(key))
+    return int(parts[1])
+
+
+def normalize_filters(raw_filters):
+    """filters 원본을 {N: {'Cross': matrix, 'X': matrix}} 구조로 정규화한다.
+
+    필터 키('cross'/'x')를 표준 라벨로 정규화한다. 반환값과 함께,
+    로드된 크기(N) 목록을 정렬해 돌려준다.
+    """
+    normalized = {}
+    for size_key, filt_pair in raw_filters.items():
+        n = parse_size_from_key(size_key)
+        std_pair = {}
+        for label_key, matrix in filt_pair.items():
+            std_pair[normalize_label(label_key)] = matrix
+        normalized[n] = std_pair
+    return normalized
+
+
+def analyze_pattern(pattern_id, entry, filters):
+    """패턴 1건을 분석해 결과 딕셔너리를 반환한다.
+
+    스키마/크기 문제나 라벨 문제가 있어도 예외를 밖으로 던지지 않고
+    status='FAIL' 과 reason 을 담아 반환한다(프로그램 비정상 종료 방지).
+    """
+    result = {
+        "id": pattern_id,
+        "cross": None,
+        "x": None,
+        "verdict": None,
+        "expected": None,
+        "status": "FAIL",
+        "reason": "",
+    }
+    try:
+        n = parse_size_from_key(pattern_id)
+        pattern = entry["input"]
+        expected = normalize_label(entry["expected"])
+        result["expected"] = expected
+
+        if n not in filters:
+            result["reason"] = "size_{0} 필터가 없습니다".format(n)
+            return result
+
+        pair = filters[n]
+        # 패턴이 정사각인지, 필터와 크기가 일치하는지 검증.
+        p_size = matrix_size(pattern)
+        if p_size != n:
+            result["reason"] = (
+                "크기 불일치: 키의 N={0} vs 패턴 {1}x{1}".format(n, p_size)
+            )
+            return result
+
+        score_cross = mac_2d(pattern, pair[LABEL_CROSS])
+        score_x = mac_2d(pattern, pair[LABEL_X])
+        result["cross"] = score_cross
+        result["x"] = score_x
+
+        verdict = judge(score_cross, score_x)
+        result["verdict"] = verdict
+
+        if verdict == LABEL_UNDECIDED:
+            result["reason"] = "동점(UNDECIDED) 규칙에 따라 FAIL"
+        elif verdict == expected:
+            result["status"] = "PASS"
+        else:
+            result["reason"] = "판정({0}) != expected({1})".format(
+                verdict, expected
+            )
+    except (KeyError, ValueError, TypeError) as exc:
+        result["reason"] = "스키마/데이터 오류: {0}".format(exc)
+    return result
+
+
 def run_mode2():
-    """모드 2: data.json 분석. 후속 커밋에서 구현."""
-    print("[모드 2] 아직 구현되지 않았습니다.")
+    """data.json 을 로드해 필터/패턴을 일괄 판정하고 결과를 리포트한다."""
+    try:
+        data = load_data(DATA_PATH)
+    except FileNotFoundError:
+        print("data.json 을 찾을 수 없습니다: {0}".format(DATA_PATH))
+        return
+    except json.JSONDecodeError as exc:
+        print("data.json 파싱 실패: {0}".format(exc))
+        return
+
+    # [1] 필터 로드 (라벨 정규화)
+    print("#----------------------------------------")
+    print("# [1] 필터 로드")
+    print("#----------------------------------------")
+    try:
+        filters = normalize_filters(data["filters"])
+    except (KeyError, ValueError) as exc:
+        print("필터 로드 실패: {0}".format(exc))
+        return
+    for n in sorted(filters):
+        labels = ", ".join(sorted(filters[n]))
+        print("✓ size_{0:<3} 필터 로드 완료 ({1})".format(n, labels))
+    print()
+
+    # [2] 패턴 분석
+    print("#----------------------------------------")
+    print("# [2] 패턴 분석 (라벨 정규화 적용)")
+    print("#----------------------------------------")
+    patterns = data.get("patterns", {})
+    results = []
+    for pattern_id in sorted(patterns, key=_pattern_sort_key):
+        res = analyze_pattern(pattern_id, patterns[pattern_id], filters)
+        results.append(res)
+
+        print("--- {0} ---".format(pattern_id))
+        if res["cross"] is not None:
+            print("Cross 점수: {0}".format(res["cross"]))
+            print("X 점수: {0}".format(res["x"]))
+        expected = res["expected"] if res["expected"] is not None else "?"
+        verdict = res["verdict"] if res["verdict"] is not None else "-"
+        if res["status"] == "PASS":
+            print("판정: {0} | expected: {1} | PASS".format(verdict, expected))
+        else:
+            print("판정: {0} | expected: {1} | FAIL ({2})".format(
+                verdict, expected, res["reason"]))
+    print()
+
+    # [3] 성능 분석
+    print("#----------------------------------------")
+    print("# [3] 성능 분석 (평균/10회)")
+    print("#----------------------------------------")
+    performance_analysis([3, 5, 13, 25])
+    print()
+
+    # [4] 결과 요약
+    total = len(results)
+    passed = sum(1 for r in results if r["status"] == "PASS")
+    failed = total - passed
+    print("#----------------------------------------")
+    print("# [4] 결과 요약")
+    print("#----------------------------------------")
+    print("총 테스트: {0}개".format(total))
+    print("통과: {0}개".format(passed))
+    print("실패: {0}개".format(failed))
+    if failed:
+        print()
+        print("실패 케이스:")
+        for r in results:
+            if r["status"] == "FAIL":
+                print("- {0}: {1}".format(r["id"], r["reason"]))
+
+
+def _pattern_sort_key(key):
+    """패턴 키를 (N, idx) 기준으로 자연 정렬하기 위한 보조 키."""
+    parts = key.split("_")
+    try:
+        return (int(parts[1]), int(parts[2]))
+    except (IndexError, ValueError):
+        return (0, key)
 
 
 # ---------------------------------------------------------------------------
