@@ -6,11 +6,12 @@ AI가 이미지를 인식하는 핵심 원리인 MAC(Multiply-Accumulate) 연산
 두 개의 필터(Cross, X) 중 입력 패턴과 더 유사한(점수가 높은) 쪽을 골라
 "이 패턴은 십자가인가, X인가"를 판별한다.
 
-실제 로직은 npu 패키지에 계층별로 분리되어 있다:
-    npu.core    - 상수/정책, 라벨 정규화, 행렬 자료구조, MAC 연산·판정
-    npu.dataset - data.json 로드 및 스키마 검증/판정
-    npu.bench   - 성능 측정 및 패턴 생성
-    npu.cli     - 콘솔 입력 헬퍼 및 실행 흐름(run_*)
+실제 로직은 npu 패키지에 역할별로 분리되어 있다:
+    npu.core     - 상수/정책, 라벨 정규화, 행렬 자료구조, MAC 연산·판정
+    npu.patterns - N x N Cross / X 패턴 생성
+    npu.bench    - MAC 연산의 성능 측정과 결과 표
+    npu.dataset  - data.json 로드 및 스키마 검증/판정
+    npu.cli      - 콘솔 입출력 헬퍼 및 실행 흐름(run_*)
 """
 
 from npu.cli import (

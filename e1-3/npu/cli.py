@@ -1,6 +1,6 @@
-"""콘솔 입력 헬퍼와 각 모드의 실행 흐름(run_*).
+"""콘솔 입출력 헬퍼와 각 모드의 실행 흐름(run_*).
 
-하위 계층(core/bench/dataset)을 조립하는 유즈케이스 계층이다.
+core / patterns / bench / dataset 를 조립해 실제 화면 흐름을 만든다.
 """
 
 import json
@@ -16,10 +16,8 @@ from .bench import (
     measure_mac_ms,
     performance_analysis,
     compare_optimization,
-    generate_cross,
-    generate_x,
-    print_matrix,
 )
+from .patterns import generate_cross, generate_x
 from .dataset import (
     resolve_data_path,
     load_data,
@@ -27,6 +25,21 @@ from .dataset import (
     analyze_pattern,
     pattern_sort_key,
 )
+
+
+# ---------------------------------------------------------------------------
+# 콘솔 출력 헬퍼
+# ---------------------------------------------------------------------------
+
+def print_matrix(matrix):
+    """행렬을 한 줄에 한 행씩 출력한다(값이 정수면 소수점을 생략)."""
+    for row in matrix:
+        cells = []
+        for value in row:
+            cells.append(
+                str(int(value)) if float(value).is_integer() else str(value)
+            )
+        print(" ".join(cells))
 
 
 # ---------------------------------------------------------------------------
