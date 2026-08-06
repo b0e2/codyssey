@@ -306,22 +306,28 @@ X 점수: 0.1
 
 ## 프로젝트 구조
 
-책임(계층)별로 `npu` 패키지에 분리했습니다. 하위 계층일수록 의존성이 적고, 상위
-계층(`cli`)이 이들을 조립합니다. 의존 방향은 `core ← bench/dataset ← cli ← main`
-단방향(순환 없음)입니다.
+역할별로 `npu` 패키지에 분리했습니다. `core`가 MAC 연산과 판정 규칙을 담고, 나머지
+모듈이 각자의 역할(패턴 생성 / 성능 측정 / 데이터 로드 / 화면)을 맡습니다. `cli`가
+이들을 조립하고 `main`은 메뉴만 담당합니다. 의존 방향은
+`core ← patterns/bench/dataset ← cli ← main` 단방향(순환 없음)입니다.
 
 ```
-main.py              # 진입점: 메뉴 출력 + 모드 디스패치만
+main.py              # 진입점: 메뉴 루프 + 모드 디스패치
 npu/
+├── __init__.py      # 패키지 설명
 ├── core.py          # 상수/정책, 라벨 정규화, 행렬 자료구조, MAC 연산·판정 (최하위)
+├── patterns.py      # N×N Cross/X 패턴 생성
+├── bench.py         # MAC 연산의 성능 측정과 결과 표(2D·1D)
 ├── dataset.py       # data.json 로드, 스키마/크기 검증, 케이스 판정
-├── bench.py         # 성능 측정(2D·1D) 및 패턴 생성기
-└── cli.py           # 콘솔 입력 헬퍼 + 실행 흐름(run_mode1/2, 보너스)
+└── cli.py           # 콘솔 입출력 헬퍼 + 실행 흐름(run_mode1/2, 보너스)
 tests/
+├── __init__.py
 ├── test_core.py     # 라벨·행렬·MAC·판정 단위 테스트
 └── test_dataset.py  # 키 파싱·필터 정규화·케이스 판정·실제 data.json 검증
 data/
 └── data.json        # 필터(5/13/25)와 패턴(input/expected)
+docs/
+└── screenshots/     # 실행 화면 캡처(mode1~4.png)
 ```
 
 ### 테스트 실행
