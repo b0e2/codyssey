@@ -14,6 +14,7 @@ AI가 이미지를 인식하는 핵심 원리인 MAC(Multiply-Accumulate) 연산
 """
 
 from npu.cli import (
+    read_line,
     run_mode1,
     run_mode2,
     run_optimization_compare,
@@ -30,7 +31,7 @@ def main():
     print("3. 최적화 비교 2D vs 1D (보너스)")
     print("4. 패턴 생성기 (보너스)")
 
-    choice = input("선택: ").strip()
+    choice = read_line("선택: ").strip()
     print()
 
     if choice == "1":
