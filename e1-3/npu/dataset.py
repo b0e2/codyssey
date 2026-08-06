@@ -19,7 +19,24 @@ from .core import (
 
 # data.json 위치: 이 파일은 <프로젝트루트>/npu/dataset.py 이므로 한 단계 위가 루트.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_PATH = os.path.join(BASE_DIR, "data", "data.json")
+
+# data.json 탐색 순서: data/ 하위 -> 프로젝트 루트 -> 현재 작업 디렉토리.
+DATA_CANDIDATES = (
+    os.path.join(BASE_DIR, "data", "data.json"),
+    os.path.join(BASE_DIR, "data.json"),
+    os.path.join(os.getcwd(), "data.json"),
+)
+
+
+def resolve_data_path():
+    """존재하는 첫 번째 data.json 경로를 반환한다(없으면 기본 경로)."""
+    for path in DATA_CANDIDATES:
+        if os.path.isfile(path):
+            return path
+    return DATA_CANDIDATES[0]
+
+
+DATA_PATH = resolve_data_path()
 
 
 def load_data(path):
