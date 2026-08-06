@@ -33,17 +33,29 @@ from .dataset import (
 # 콘솔 입력 헬퍼
 # ---------------------------------------------------------------------------
 
-def read_line(prompt=""):
+class OperationCancelled(Exception):
+    """작업 중 Ctrl+C 로 취소했음을 알린다. 메뉴 루프가 받아 메뉴로 복귀한다."""
+
+
+def read_line(prompt="", cancellable=True):
     """한 줄을 입력받는다.
 
-    EOF(Ctrl+D, 파이프 종료) 시 traceback 대신 안내 문구를 출력하고
-    프로그램을 정상 종료한다.
+    - EOF(Ctrl+D, 파이프 종료): 안내 후 프로그램을 정상 종료한다.
+    - Ctrl+C: cancellable 이면 OperationCancelled 로 현재 작업만 취소하고,
+      아니면(메뉴 단계) 프로그램을 정상 종료한다.
     """
     try:
         return input(prompt)
     except EOFError:
         print()
         print("입력이 종료되었습니다. 프로그램을 종료합니다.")
+        raise SystemExit(0)
+    except KeyboardInterrupt:
+        print()
+        if cancellable:
+            print("작업을 취소했습니다. 메뉴로 돌아갑니다.")
+            raise OperationCancelled
+        print("프로그램을 종료합니다.")
         raise SystemExit(0)
 
 
