@@ -1,8 +1,9 @@
-"""성능 측정 및 패턴 생성.
+"""MAC 연산의 성능 측정.
 
-- 시간 측정: measure_mac_ms / measure_mac_1d_ms
-- 성능 표: performance_analysis / compare_optimization (보너스 1: 2D vs 1D)
-- 패턴 생성기(보너스 2): generate_cross / generate_x / print_matrix
+- 단일 측정: measure_mac_ms / measure_mac_1d_ms (I/O 를 제외한 연산 구간만)
+- 결과 표: performance_analysis / compare_optimization (보너스 1: 2D vs 1D)
+
+측정 대상 자체(패턴 생성)는 patterns 모듈이, 화면 출력 서식은 cli 가 담당한다.
 """
 
 import time
@@ -83,37 +84,3 @@ def compare_optimization(sizes, repeat=10):
         label = "{0}x{0}".format(n)
         print("{0:<10} {1:>8.4f}   {2:>8.4f}   {3:>7.2f}x".format(
             label, t2d, t1d, speedup))
-
-
-# ---------------------------------------------------------------------------
-# 패턴 생성기 - N x N Cross / X 자동 생성 (보너스 2)
-# ---------------------------------------------------------------------------
-
-def generate_cross(n):
-    """N x N 십자가(Cross) 패턴을 생성한다(가운데 행/열이 1)."""
-    mid = n // 2
-    matrix = create_matrix(n)
-    for i in range(n):
-        for j in range(n):
-            if i == mid or j == mid:
-                set_cell(matrix, i, j, 1.0)
-    return matrix
-
-
-def generate_x(n):
-    """N x N X 패턴을 생성한다(두 대각선이 1)."""
-    matrix = create_matrix(n)
-    for i in range(n):
-        for j in range(n):
-            if i == j or i + j == n - 1:
-                set_cell(matrix, i, j, 1.0)
-    return matrix
-
-
-def print_matrix(matrix):
-    """행렬을 사람이 보기 좋게(정수는 정수로) 콘솔에 출력한다."""
-    for row in matrix:
-        cells = []
-        for v in row:
-            cells.append(str(int(v)) if float(v).is_integer() else str(v))
-        print(" ".join(cells))

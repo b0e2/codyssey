@@ -1,6 +1,6 @@
-"""콘솔 입력 헬퍼와 각 모드의 실행 흐름(run_*).
+"""콘솔 입출력 헬퍼와 각 모드의 실행 흐름(run_*).
 
-하위 계층(core/bench/dataset)을 조립하는 유즈케이스 계층이다.
+core / patterns / bench / dataset 를 조립해 실제 화면 흐름을 만든다.
 """
 
 import json
@@ -16,12 +16,10 @@ from .bench import (
     measure_mac_ms,
     performance_analysis,
     compare_optimization,
-    generate_cross,
-    generate_x,
-    print_matrix,
 )
+from .patterns import generate_cross, generate_x
 from .dataset import (
-    DATA_PATH,
+    resolve_data_path,
     load_data,
     normalize_filters,
     analyze_pattern,
@@ -30,8 +28,49 @@ from .dataset import (
 
 
 # ---------------------------------------------------------------------------
+# 콘솔 출력 헬퍼
+# ---------------------------------------------------------------------------
+
+def print_matrix(matrix):
+    """행렬을 한 줄에 한 행씩 출력한다(값이 정수면 소수점을 생략)."""
+    for row in matrix:
+        cells = []
+        for value in row:
+            cells.append(
+                str(int(value)) if float(value).is_integer() else str(value)
+            )
+        print(" ".join(cells))
+
+
+# ---------------------------------------------------------------------------
 # 콘솔 입력 헬퍼
 # ---------------------------------------------------------------------------
+
+class OperationCancelled(Exception):
+    """작업 중 Ctrl+C 로 취소했음을 알린다. 메뉴 루프가 받아 메뉴로 복귀한다."""
+
+
+def read_line(prompt="", cancellable=True):
+    """한 줄을 입력받는다.
+
+    - EOF(Ctrl+D, 파이프 종료): 안내 후 프로그램을 정상 종료한다.
+    - Ctrl+C: cancellable 이면 OperationCancelled 로 현재 작업만 취소하고,
+      아니면(메뉴 단계) 프로그램을 정상 종료한다.
+    """
+    try:
+        return input(prompt)
+    except EOFError:
+        print()
+        print("입력이 종료되었습니다. 프로그램을 종료합니다.")
+        raise SystemExit(0)
+    except KeyboardInterrupt:
+        print()
+        if cancellable:
+            print("작업을 취소했습니다. 메뉴로 돌아갑니다.")
+            raise OperationCancelled
+        print("프로그램을 종료합니다.")
+        raise SystemExit(0)
+
 
 def read_matrix(n, title):
     """콘솔에서 n x n 행렬을 한 줄씩(공백 구분) 입력받는다.
@@ -44,7 +83,7 @@ def read_matrix(n, title):
     matrix = create_matrix(n)
     row = 0
     while row < n:
-        line = input()
+        line = read_line()
         tokens = line.split()
         if len(tokens) != n:
             print(
@@ -68,16 +107,34 @@ def read_matrix(n, title):
 # ---------------------------------------------------------------------------
 
 def run_mode1():
-    """필터 A/B와 패턴을 3x3로 입력받아 MAC 점수·판정·연산 시간을 출력한다."""
+    """필터 A/B와 패턴을 3x3로 입력받아 MAC 점수·판정·연산 시간을 출력한다.
+
+    필터는 직접 입력하거나, 패턴 생성기가 만든 3x3 Cross/X 를 재사용할 수 있다.
+    """
     print("#----------------------------------------")
     print("# [1] 필터 입력")
     print("#----------------------------------------")
-    filter_a = read_matrix(3, "필터 A (3줄 입력, 공백 구분)")
-    print("  -> 필터 A 저장 완료")
+    print("1. 직접 입력")
+    print("2. 패턴 생성기로 자동 생성 (A=Cross, B=X)")
+    source = read_line("선택: ").strip()
     print()
-    filter_b = read_matrix(3, "필터 B (3줄 입력, 공백 구분)")
-    print("  -> 필터 B 저장 완료")
-    print()
+
+    if source == "2":
+        filter_a = generate_cross(3)
+        filter_b = generate_x(3)
+        print("필터 A (Cross) 자동 생성")
+        print_matrix(filter_a)
+        print()
+        print("필터 B (X) 자동 생성")
+        print_matrix(filter_b)
+        print()
+    else:
+        filter_a = read_matrix(3, "필터 A (3줄 입력, 공백 구분)")
+        print("  -> 필터 A 저장 완료")
+        print()
+        filter_b = read_matrix(3, "필터 B (3줄 입력, 공백 구분)")
+        print("  -> 필터 B 저장 완료")
+        print()
 
     print("#----------------------------------------")
     print("# [2] 패턴 입력")
@@ -118,10 +175,11 @@ def run_mode1():
 
 def run_mode2():
     """data.json 을 로드해 필터/패턴을 일괄 판정하고 결과를 리포트한다."""
+    data_path = resolve_data_path()
     try:
-        data = load_data(DATA_PATH)
+        data = load_data(data_path)
     except FileNotFoundError:
-        print("data.json 을 찾을 수 없습니다: {0}".format(DATA_PATH))
+        print("data.json 을 찾을 수 없습니다: {0}".format(data_path))
         return
     except json.JSONDecodeError as exc:
         print("data.json 파싱 실패: {0}".format(exc))
@@ -205,7 +263,7 @@ def run_pattern_generator():
     """보너스: 크기 N 을 입력받아 Cross/X 패턴을 생성하고, 생성 패턴으로
     3x3 판정 예시와 성능 분석을 재활용해 보여준다."""
     while True:
-        raw = input("생성할 패턴 크기 N 입력(예: 5): ").strip()
+        raw = read_line("생성할 패턴 크기 N 입력(예: 5): ").strip()
         try:
             n = int(raw)
             if n < 1:
