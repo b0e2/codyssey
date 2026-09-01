@@ -1,0 +1,31 @@
+# 런타임 상태 파일 (첫 실행 시 기본 퀴즈 데이터로 자동 생성)
+state.json
+state.json.tmp
+
+# 가상환경
+.venv/
+venv/
+env/
+
+# 파이썬
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+build/
+dist/
+*.egg-info/
+
+# 테스트 / 커버리지
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 에디터
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

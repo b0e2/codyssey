@@ -1,0 +1,6 @@
+[project]
+name = "codyssey-e1-2"
+version = "0.1.0"
+description = "터미널에서 동작하는 파이썬 · 백엔드 퀴즈 게임"
+requires-python = ">=3.10"
+dependencies = []
