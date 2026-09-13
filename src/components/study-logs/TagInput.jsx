@@ -20,6 +20,11 @@ export default function TagInput({ tags = [], maxTags = 5, error, suggestions = 
   }
 
   function handleKeyDown(event) {
+    // 한글처럼 글자를 조합하는 입력기는 조합을 확정할 때도 Enter 를 보낸다.
+    // 그 Enter 는 글자를 끝내는 것이지 태그를 끝내는 것이 아니다.
+    // 걸러내지 않으면 '사탕' 을 칠 때 확정 전 값과 남은 글자가 각각 태그가 된다.
+    if (event.nativeEvent.isComposing) return
+
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault()
       commit(draft)
