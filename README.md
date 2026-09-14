@@ -1,357 +1,243 @@
-# 포트폴리오
+# Portfolio — 나를 소개하는 웹페이지
 
-HTML, CSS, JavaScript로 만든 반응형 포트폴리오입니다. 외부 UI·JavaScript 라이브러리와 별도 빌드 단계 없이, 테마·내비게이션·프로젝트 목록·문의 폼을 기능별 모듈로 나눠 구성했습니다.
+<p align="center">
+  <b>프레임워크 없이 만든 반응형 포트폴리오</b><br/>
+  이벤트에서 화면까지의 단방향 흐름을 직접 구현한 정적 웹사이트
+</p>
 
-- 배포 URL: https://b0e2.github.io/b1-1/
-- 저장소: https://github.com/b0e2/b1-1
+<p align="center">
+  <img src="https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white" alt="HTML5" />
+  <img src="https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white" alt="CSS3" />
+  <img src="https://img.shields.io/badge/JavaScript-ES2022-F7DF1E?style=flat-square&logo=javascript&logoColor=black" alt="JavaScript" />
+  <img src="https://img.shields.io/badge/GitHub%20Pages-222222?style=flat-square&logo=githubpages&logoColor=white" alt="GitHub Pages" />
+  <img src="https://img.shields.io/badge/dependencies-none-7CF0BD?style=flat-square" alt="No dependencies" />
+</p>
 
-## 사용 기술
+<p align="center">
+  <img src="./.github/screenshots/desktop-light.png" alt="홈 화면" width="90%" />
+</p>
 
-| 구분 | 내용 |
+<p align="center">
+  <a href="https://b0e2.github.io/b1-1/"><b>배포 주소</b></a>
+</p>
+
+---
+
+## Overview
+
+모바일 엔지니어 정빈(Jeong Been)을 소개하는 포트폴리오입니다.
+
+라이브러리도 빌드 단계도 쓰지 않고 HTML · CSS · JavaScript 만으로 만들었습니다. 화면을 그리는 것보다 **어떤 값을 상태로 둘지, 그 상태가 언제 화면이 되는지** 정하는 것이 이 프로젝트의 목적입니다.
+
+## Problem
+
+프레임워크가 상태와 렌더링을 대신 해 주면 그 사이가 가려집니다.
+
+- 이벤트가 화면으로 이어지는 과정을 모른 채 쓰게 됨
+- DOM 에서 값을 되읽기 시작하면 화면이 근거가 되어 상태와 어긋남
+- 로딩 · 실패 · 빈 상태를 나중에 붙이면 화면마다 분기가 흩어짐
+
+## Solution
+
+- 상태를 바꾸는 길을 `setState` 하나로, 화면을 그리는 길을 구독자 통지 하나로 고정
+- DOM 에서 값을 되읽는 코드를 두지 않음. 화면의 근거는 항상 상태 객체 하나
+- 외부 데이터를 상태 네 개로 정의해 한 번에 하나만 그림
+- 색과 간격을 CSS 변수로 모아 테마 전환을 속성 하나로 처리
+
+## Core Features
+
+- Hero · About · Skills · Projects · Contact · Footer 로 이어지는 한 페이지 구성
+- GitHub 저장소 목록을 불러와 카드로 표시, 언어별 필터
+- 불러오는 중 · 성공 · 실패 · 비어 있음 네 상태를 구분해 표시
+- 응답을 10분 보관하고, 요청이 실패하면 저장해 둔 목록으로 대체
+- 이름 · 이메일 · 메시지 검증 후 실제 메일 전송
+- 밝게 / 어둡게 전환. 토글과 운영체제 설정 양쪽에서 동작
+- 햄버거 메뉴, 부드러운 앵커 이동, 맨 위로 가기, 스크롤 등장 효과
+- Hero 문구 타이핑 효과. 탭이 가려지면 멈춤
+
+## Screens
+
+| 프로젝트 목록 · 다크 | 모바일 · 다크 |
 | --- | --- |
-| 마크업 | HTML5 시맨틱 태그 |
-| 스타일 | CSS 변수, Flexbox, Grid, 모바일 퍼스트 반응형 |
-| 스크립트 | ES Modules, DOM API, Fetch API, Intersection Observer |
-| 데이터 | GitHub REST API, localStorage |
-| 폼 전송 | Formspree |
-| 폰트 | Space Grotesk, Noto Sans KR, IBM Plex Mono |
-| 배포 | GitHub Pages |
+| <img src="./.github/screenshots/desktop-dark.png" alt="프로젝트 목록" /> | <img src="./.github/screenshots/mobile-dark.png" alt="모바일 화면" /> |
 
-## 주요 기능
-
-| 기능 | 동작 | 구현 |
-| --- | --- | --- |
-| 다크 모드 | 토글로 전환하고 `localStorage`에 저장해 새로고침 후에도 유지 | `js/features/theme.js` |
-| 시스템 테마 추종 | 여는 도중 운영체제 설정이 바뀌면 화면과 토글 표시가 함께 따라감 | `js/features/theme.js` |
-| 햄버거 메뉴 | 768px 미만에서 버튼 노출, `classList.toggle('active')`로 열고 닫음, Escape로 닫힘 | `js/features/navigation.js` |
-| 부드러운 스크롤 | 앵커 기본 이동을 막고 `scrollIntoView`로 이동한 뒤 대상 섹션에 포커스 | `js/features/navigation.js` |
-| 스크롤 탑 버튼 | 320px를 넘으면 나타나고 클릭 시 맨 위로 | `js/features/navigation.js` |
-| 헤더 배경 전환 | 60px를 넘으면 헤더에 배경과 경계선 | `js/features/navigation.js` |
-| 스크롤 애니메이션 | Intersection Observer(threshold `0.2`)로 등장, 전부 나타나면 관찰 해제 | `js/features/scroll-reveal.js` |
-| 프로젝트 목록 | GitHub API 응답을 카드로 렌더, 로딩·성공·에러·빈 상태 구분 | `js/features/projects.js` |
-| 외부 링크 표시 | 카드 제목이 저장소로 나가는 링크임을 화살표로 알림 | `js/features/projects.js` |
-| 응답 캐시 | 성공 응답을 10분간 `localStorage`에 보관, 요청 실패 시 대체 표시 | `js/github-api.js` |
-| 폼 유효성 검사 | 필수값·이메일 형식·메시지 길이를 검사하고 필드 옆에 오류 표시 | `js/features/contact-form.js` |
-| 폼 실제 전송 | Formspree로 POST, 전송 중에는 버튼을 잠가 중복 제출 차단 | `js/features/contact-form.js` |
-
-보너스 과제는 **언어별 필터링**, **Hero 타이핑 효과**, **시스템 다크 모드 감지(`prefers-color-scheme`)**, **폼 실제 전송(Formspree)** 네 가지를 모두 구현했습니다.
-
-## 상태 → 렌더링 흐름
-
-상태는 `js/store.js` 한 곳에 모으고, 흐름은 항상 한 방향입니다.
-
-```
-이벤트 → setState → 구독자에게 통지 → render → DOM
-```
-
-`main.js`가 렌더러를 구독시키는 조립 지점이고, 각 기능은 자기 상태와 렌더를 스스로 소유합니다.
-
-```js
-// js/main.js
-const renderApp = (state) => {
-  renderTheme(state);
-  renderNavigation(state);
-  renderProjects(state);
-  renderContactForm(state);
-};
-
-subscribe(renderApp);
-```
-
-### 1. 다크 모드
-
-```js
-// 이벤트          js/features/theme.js
-toggleButton.addEventListener('click', handleToggleClick);
-systemScheme.addEventListener('change', handleSystemSchemeChange);
-
-// 상태 변경 — 토글은 선택을 저장한다
-const handleToggleClick = () => {
-  const { theme } = getState();
-  applyTheme(theme === 'dark' ? 'light' : 'dark');  // setState + localStorage 저장
-};
-
-// 상태 변경 — 시스템 설정도 같은 경로를 쓴다
-const handleSystemSchemeChange = ({ matches }) => {
-  applyTheme(matches ? 'dark' : 'light');           // 마지막 신호가 이긴다
-};
-
-// 렌더
-export const renderTheme = ({ theme }) => {
-  document.documentElement.dataset.theme = theme;   // CSS 변수 전체가 교체된다
-};
-```
-
-### 2. 프로젝트 API
-
-```js
-// 이벤트(초기화·재시도)  js/features/projects.js
-const loadProjects = async ({ forceRefresh = false } = {}) => {
-  setProjects({ status: 'loading' });                 // 상태 변경 ①
-
-  try {
-    const { repositories } = await loadRepositories(GITHUB_USERNAME, { forceRefresh });
-    const items = sortByRecentPush(
-      selectPortfolioRepositories(repositories).map(normalizeRepository),
-    );
-
-    setProjects({ status: items.length > 0 ? 'ready' : 'empty', items });  // 상태 변경 ②
-  } catch (error) {
-    setProjects({ status: 'error', items: [], errorMessage: resolveErrorMessage(error) });
-  }
-};
-
-// 렌더 — status 하나로 그릴 화면이 정해진다
-export const renderProjects = ({ projects: { status, items, language } }) => { /* ... */ };
-```
-
-### 3. 폼 유효성 검사
-
-```js
-// 이벤트          js/features/contact-form.js
-inputs[field].addEventListener('input', handleFieldInput);
-inputs[field].addEventListener('blur', handleFieldBlur);
-
-// 상태 변경 — 한 번 떠난(touched) 필드만 글자마다 재검증한다
-setForm({
-  values: nextValues,
-  errors: { ...errors, [name]: touched[name] ? validateField(name, value) : '' },
-});
-
-// 렌더
-errorElements[field].textContent = message;
-input.setAttribute('aria-invalid', String(Boolean(message)));
-```
-
-### 4. 언어 필터
-
-```js
-// 이벤트(위임)     js/features/projects.js
-filtersElement.addEventListener('click', handleFilterClick);
-
-// 상태 변경
-setProjects({ language: button.dataset.language });
-
-// 렌더 — 원본 items는 그대로 두고 볼 것만 골라 낸다
-const selectByLanguage = (items, language) =>
-  language === ALL_LANGUAGES ? items : items.filter((item) => item.language === language);
-```
-
-## 프로젝트 상태 UI
-
-`Projects` 섹션은 아래 네 화면 중 하나만 표시합니다.
-
-| 상태 | 조건 | 화면 |
-| --- | --- | --- |
-| `loading` | 요청 진행 중 | 스피너 + "저장소를 불러오는 중입니다." + 스켈레톤 카드 3장 |
-| `ready` | 응답 1건 이상 | 카드 그리드 + 언어 필터 칩 |
-| `empty` | 응답 0건 | "표시할 프로젝트가 없습니다." |
-| `empty` | 필터 결과 0건 | "선택한 언어에 해당하는 프로젝트가 없습니다." + 필터 초기화 |
-| `error` | 요청 실패 | 사유 문구 + 다시 시도 버튼 |
-
-`STATE DEMO` 컨트롤로 추가 요청 없이 네 화면을 확인할 수 있습니다. 선택값은 저장하지 않으므로 새로고침하면 실데이터로 돌아옵니다.
-
-## 에러 처리
-
-### GitHub API
-
-인증 없이 호출하므로 **시간당 60회** 제한이 있습니다. 짧은 시간에 반복 새로고침하면 `403`이 돌아옵니다.
-
-| 응답 | 화면 |
+| 섹션 | 화면 |
 | --- | --- |
-| `403` | "시간당 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요." |
-| `404` | "GitHub 사용자 b0e2의 저장소를 찾을 수 없습니다." |
-| 그 외·네트워크 실패 | "프로젝트를 불러올 수 없습니다." |
+| `#home` | 인사말 · 타이핑 문구 · 프로필 사진 · 바로가기 버튼 |
+| `#about` | 자기소개와 지표 3종 |
+| `#skills` | 기술 스택 카드 4장 |
+| `#projects` | GitHub 저장소 카드 · 언어 필터 · 상태 화면 |
+| `#contact` | 문의 폼과 전송 성공 패널 |
 
-한도를 넘겨도 저장해 둔 응답이 있으면 오류 화면 대신 그 목록을 보여 주고, 최신이 아닐 수 있다는 안내와 새로고침 버튼을 함께 붙입니다.
+## Tech Stack
+
+| Layer | Stack |
+| --- | --- |
+| Markup | `HTML5` 시맨틱 태그 |
+| Styling | 순수 CSS, CSS 변수 기반 테마, Flexbox · Grid |
+| Script | `ES Modules`, DOM API, `Fetch API`, `Intersection Observer` |
+| Data | `GitHub REST API`, `localStorage` |
+| Form | `Formspree` |
+| Font | Space Grotesk, Noto Sans KR, IBM Plex Mono |
+| Deploy | `GitHub Pages` |
+
+UI 라이브러리와 빌드 도구는 쓰지 않았습니다. 파일이 그대로 배포됩니다.
 
 ```text
-js/github-api.js — 캐시 우선순위
-
-유효한 캐시가 있으면            → 요청하지 않고 그대로 사용
-없거나 만료됐으면               → 요청하고 성공 시 캐시 갱신
-요청이 실패했는데 캐시가 있으면 → 만료됐더라도 그것으로 대체 (isStale)
-요청도 실패하고 캐시도 없으면   → error 상태
+.
+├── index.html          시맨틱 구조와 기능이 사용할 컨테이너
+├── css/                진입점 1개 + 토큰 · 기본 · 배치 · 공통 · 섹션별 6개
+├── js/
+│   ├── main.js         초기화와 렌더 구독
+│   ├── store.js        단일 상태 저장소
+│   ├── dom.js          선택자와 escape
+│   ├── github-api.js   저장소 요청 · 정규화 · 캐시
+│   └── features/       기능 6개. 각자 이벤트 · 상태 변경 · 렌더를 소유
+└── images/
 ```
 
-### 폼 전송
+`css/style.css` 의 `@import` 순서가 곧 의존 방향입니다. `tokens → base → layout → components → sections → projects → contact`
 
-| 응답 | 화면 |
+## Data
+
+상태는 `js/store.js` 한 객체입니다.
+
+| 경로 | 값 | 바꾸는 곳 |
+| --- | --- | --- |
+| `theme` | `light` \| `dark` | `theme.js` |
+| `navigation.menuOpen` | 햄버거 메뉴 열림 | `navigation.js` |
+| `navigation.isScrolled` | 헤더 임계값 넘김 | `navigation.js` |
+| `navigation.showTopButton` | 맨 위로 버튼 임계값 넘김 | `navigation.js` |
+| `projects.status` | `idle` \| `loading` \| `ready` \| `error` \| `empty` | `projects.js` |
+| `projects.items` | 정규화된 저장소 배열 | `projects.js` |
+| `projects.language` | 선택한 언어 필터 | `projects.js` |
+| `projects.usedCache` `cachedAt` `cacheIsStale` | 캐시 안내 문구 선택용 | `projects.js` |
+| `form.values` `touched` `errors` | 입력값 · 방문 여부 · 표시 중인 오류 | `contact-form.js` |
+| `form.status` | `idle` \| `sending` \| `sent` \| `failed` | `contact-form.js` |
+
+타이핑 위치와 등장 효과는 상태에 없습니다. 한 기능 안에서 끝나는 값이라 해당 모듈이 지역 변수로 들고 있습니다.
+
+브라우저 저장소는 두 개를 씁니다.
+
+| 키 | 값 |
 | --- | --- |
-| `422` | "입력값을 다시 확인해 주세요." |
-| `429` | "잠시 뒤에 다시 보내 주세요. 짧은 시간에 너무 많이 전송되었습니다." |
-| 그 외·네트워크 실패 | "메시지를 보내지 못했습니다. 잠시 후 다시 시도해 주세요." |
+| `portfolio-theme` | 마지막으로 정해진 테마 |
+| `portfolio-repos:b0e2` | `{ savedAt, repositories }` · 10분간 유효 |
 
-실패해도 입력값은 지우지 않습니다. 보내지 못한 것은 네트워크 사정이지 입력의 잘못이 아니므로, 같은 내용을 다시 쓰게 만들 이유가 없습니다.
+## Data Flow
 
-## 동작 기준값
+```text
+[ 사용자 동작 ]
+   │  click · input · blur · submit · scroll · change
+   ▼
+features/*.js 핸들러
+   │  1) 무엇이 달라졌는지 판단
+   │  2) 달라졌을 때만 setState 호출
+   ▼
+store.js
+   │  새 객체로 교체 → 구독자 전원에게 통지
+   ▼
+main.js renderApp
+   │  renderTheme · renderNavigation · renderProjects · renderContactForm
+   │  각 렌더러는 상태를 읽기만 하고 바꾸지 않는다
+   ▼
+[ DOM 갱신 ]
+
+── 외부 데이터는 한 갈래 더 거친다 ──
+
+projects.js loadProjects()
+   │  status: loading
+   ▼
+github-api.js loadRepositories()
+   │  유효한 캐시 있음        → 요청 없이 반환
+   │  없거나 만료             → 요청 후 캐시 갱신
+   │  요청 실패 + 캐시 있음   → 만료된 캐시로 대체 (isStale)
+   │  요청 실패 + 캐시 없음   → 예외
+   ▼
+projects.js
+   │  성공 → ready / empty      실패 → error
+   ▼
+[ 상태 하나가 화면 하나를 정한다 ]
+```
+
+## Technical Highlights
+
+| Area | Decision | Impact |
+| --- | --- | --- |
+| File Separation | 구조 · 표현 · 동작을 파일로 나누고, JS 안에서도 기능별로 다시 나눔 | 서로 다른 이유로 바뀌는 것이 섞이지 않아 고칠 파일이 하나 |
+| Semantic HTML | 제목을 가진 주제 단위는 `section`, 떼어 놓아도 말이 되는 단위는 `article` | 보조기술이 영역을 건너뛸 수 있고, 주석 없이 역할이 읽힘 |
+| CSS Variables | 색을 역할 이름으로 정의하고 `data-theme` 으로 값만 교체 | 테마 전환이 속성 하나. JavaScript 가 색을 하나도 모름 |
+| Event Binding | `onclick` 없이 `addEventListener`, 동적 요소는 부모에서 위임 | 마크업에 로직이 없고, `passive` 같은 옵션을 쓸 수 있음 |
+| Flexbox vs Grid | 축이 하나면 Flex, 행과 열이 함께 바뀌면 Grid | 카드 그리드가 `auto-fit` 으로 미디어쿼리 없이 열 수를 정함 |
+| Mobile First | 좁은 화면을 기본으로 두고 `min-width` 에서 더하기만 함 | 작은 화면에서 되돌리는 취소 규칙이 쌓이지 않음 |
+| Single Store | 여러 곳이 읽고 다시 그리는 값만 한 객체에 모음 | 화면이 왜 이렇게 그려졌는지의 답이 항상 한곳에 있음 |
+| Async Branching | 응답 코드를 담은 예외를 던지고 `catch` 에서 사유별 문구 선택 | 403 · 404 · 네트워크 실패를 같은 경로로 처리하되 안내는 다르게 |
+| Render Guard | 내용이 달라졌을 때만 다시 그리고, 값이 다를 때만 대입 | 필터를 눌러도 포커스가 유지되고 입력 커서가 튀지 않음 |
+| Escaping | 외부 문자열은 템플릿에 넣기 전 escape | 저장소 설명에 섞인 태그가 실행되지 않음 |
+| Code Splitting | 없음. 파일을 그대로 서비스 | 빌드 단계가 없어 저장소와 배포본이 같음 |
+
+## Troubleshooting
+
+| Issue | Approach | Result |
+| --- | --- | --- |
+| 필터를 누를 때마다 버튼 포커스가 사라짐 | 언어 목록과 안내 문구가 달라졌을 때만 `innerHTML` 재생성 | 키보드로 칩을 이동해도 포커스가 유지됨 |
+| 입력 도중 커서가 문자열 끝으로 튐 | 렌더에서 값이 실제로 다를 때만 `input.value` 에 대입 | 한글 조합 중에도 커서가 제자리 |
+| `blur` 후 재검증이 오류 안내를 계속 읽음 | 필드별 안내는 `aria-describedby`, 제출 요약만 라이브 리전 | 타이핑을 방해하지 않으면서 제출 결과는 전달 |
+| GitHub API 무인증 한도 60회를 금방 소진 | 응답을 10분 보관하고, 실패 시 만료된 캐시로 대체하며 안내 표시 | 한도를 넘겨도 빈 화면 대신 지난 목록을 보여 줌 |
+| 768px 에서 Hero 문구가 세 줄이 되어 잘림 | 사진 칸이 텍스트를 좁히는 구간의 글자 크기를 폭에 비례시킴 | 320px 부터 1440px 까지 두 줄 유지 |
+| 토글 후에는 운영체제 테마를 따라갈 길이 없음 | 저장값 우선을 버리고 마지막에 들어온 신호가 이기도록 변경 | 토글과 시스템 설정이 같은 무게로 동작 |
+| 스크린샷마다 캐시 안내 유무가 달라짐 | 장마다 새 브라우저 컨텍스트에서 촬영 | 세 장의 조건이 같아짐 |
+| 스크립트가 실패하면 등장 효과 대상이 영영 숨겨짐 | 숨김 규칙을 `.js-reveal` 스위치 안에 둠 | 스크립트가 없으면 콘텐츠가 그냥 보임 |
+
+## Behavior Constants
 
 | 항목 | 값 |
 | --- | --- |
 | 헤더 배경 전환 | `scrollY >= 60px` |
 | 맨 위로 버튼 | `scrollY > 320px` |
-| 앵커 이동 보정 | `72px` |
 | 등장 효과 | Intersection Observer threshold `0.2` |
 | Hero 타이핑 | 입력 `70ms` · 삭제 `34ms` · 대기 `1.6s` |
-| Hero 커서 | blink `1s` |
 | 프로젝트 캐시 | `10분` |
 | 메시지 최소 길이 | 공백 제외 `10자` |
+| 앵커 이동 보정 | `72px` |
 | 브레이크포인트 | `768px` · `1024px` · `1180px` |
-| Hero 글자 크기 | 타이핑 자리가 두 줄로 고정돼 있어 좁은 구간에서는 폭에 비례해 줄어듭니다 |
 
-### localStorage
+Hero 글자 크기만 고정값이 아니라 `clamp` 입니다. 타이핑 자리가 두 줄로 고정돼 있어, 좁은 구간에서는 폭에 비례해 줄어야 문구가 잘리지 않습니다.
 
-| 키 | 값 | 쓰는 곳 |
-| --- | --- | --- |
-| `portfolio-theme` | `light` \| `dark` — 마지막으로 정해진 테마 | `js/features/theme.js` |
-| `portfolio-repos:b0e2` | `{ savedAt, repositories }` | `js/github-api.js` |
+## Accessibility
 
-### 테마가 정해지는 규칙
+- 첫 Tab 에서 나타나는 본문 바로가기
+- 앵커 이동 후 대상 섹션으로 포커스 이동
+- 햄버거 메뉴 `aria-expanded` 동기화, Escape 로 닫고 포커스 복귀
+- 프로젝트 상태별로 `role` 과 `aria-live` 교체. 오류만 `assertive`
+- 장식 요소는 `aria-hidden`, 링크 목적은 별도 문구로 제공
+- `prefers-reduced-motion` 에서 타이핑 · 커서 · 등장 이동 · 부드러운 스크롤 정지
+- 버튼 터치 대상 44px 이상
 
-**마지막에 들어온 신호가 지금 테마입니다.** 토글 버튼을 누르는 것도, 운영체제 설정을 바꾸는 것도 사용자가 직접 한 행동이므로 둘을 같은 무게로 봅니다.
+## Running Locally
 
-| 상황 | 결과 |
-| --- | --- |
-| 저장값 없이 첫 방문 | 시스템 설정(`prefers-color-scheme`)을 따릅니다 |
-| 토글 버튼을 누름 | 그 선택이 지금 테마가 되고 저장됩니다 |
-| 여는 도중 시스템 설정이 바뀜 | 저장값이 있어도 따라가고, 그 값이 저장됩니다 |
-| 새로고침 | 마지막 신호를 그대로 이어갑니다 |
-
-토글 버튼 문구는 `[data-theme]`로 그리므로 어느 경로로 바뀌든 함께 갱신됩니다.
-
-저장된 선택을 시스템 설정보다 우선하는 방식도 있지만 쓰지 않았습니다. 그렇게 하면 토글을 한 번 누른 뒤로는 시스템을 따라갈 길이 없어지는데, 그 상태를 푸는 방법이 화면에 없어 왜 안 바뀌는지 알 수 없게 됩니다.
-
-모션 축소 설정에서는 타이핑, 커서 blink, 등장 이동, 부드러운 이동과 카드 화살표 움직임을 멈춥니다.
-
-## 폴더 구조
-
-```text
-.
-├── index.html
-├── css/
-│   ├── style.css        # CSS 진입점
-│   ├── tokens.css       # 색상·글꼴·간격 토큰
-│   ├── base.css         # reset과 기본 요소
-│   ├── layout.css       # 컨테이너와 반응형 배치
-│   ├── components.css   # 공통 컴포넌트
-│   ├── sections.css     # Hero·About·Skills·Footer
-│   ├── projects.css     # 프로젝트 카드·필터·상태
-│   └── contact.css      # 문의 폼과 성공 패널
-├── js/
-│   ├── main.js          # 초기화와 렌더 구독
-│   ├── store.js         # 공유 상태
-│   ├── dom.js           # DOM 공통 함수
-│   ├── github-api.js    # 저장소 요청·정규화·캐시
-│   └── features/
-│       ├── theme.js
-│       ├── navigation.js
-│       ├── scroll-reveal.js
-│       ├── typing.js
-│       ├── projects.js
-│       └── contact-form.js
-├── images/
-│   └── profile.jpg
-└── .github/screenshots/
-```
-
-브라우저가 직접 연결하는 진입점은 `index.html`, `css/style.css`, `js/main.js` 셋뿐입니다. 나머지는 CSS `@import`와 JavaScript `import`로 연결됩니다.
-
-## 설계 결정
-
-| 결정 | 이유 |
-| --- | --- |
-| HTML·CSS·JS 파일 분리 | 구조·표현·동작이 서로 다른 이유로 바뀐다. 한 파일을 고칠 때 나머지를 읽지 않아도 된다 |
-| 기능별 모듈 (`features/`) | 한 기능의 이벤트·상태 변경·렌더가 한 파일에 모여, 고칠 때 열 파일이 하나다 |
-| 상태를 `store.js` 객체로 | 흩어진 전역 변수는 서로 어긋난다. 현재 값과 변경 지점이 한곳에 있어야 화면이 왜 이렇게 그려졌는지 추적할 수 있다 |
-| CSS 변수(`:root`) | 다크 테마와 반응형 구간이 같은 역할의 변수 값만 바꾼다. 테마 전환이 `data-theme` 하나로 끝난다 |
-| `addEventListener` | 같은 요소에 여러 핸들러를 붙이거나 뗄 수 있고, 마크업에 로직이 섞이지 않는다 |
-| 모바일 퍼스트 | 좁은 화면을 기본으로 두면 `min-width`에서 규칙을 더하기만 하면 된다. 넓은 화면부터 쓰면 작은 화면에서 되돌리는 규칙이 쌓인다 |
-
-### 시맨틱 태그 선택 기준
-
-| 태그 | 쓴 곳 | 기준 |
-| --- | --- | --- |
-| `header` / `footer` | 사이트 머리말·꼬리말 | 페이지 전체에 걸치는 영역 |
-| `nav` | 주요 메뉴 | 다른 곳으로 가는 링크 묶음 |
-| `main` | 본문 전체 | 페이지당 하나, 반복되지 않는 핵심 내용 |
-| `section` | Hero·About·Skills·Projects·Contact | 제목을 가진 주제 단위 (`aria-labelledby`로 연결) |
-| `article` | 기술 스택 카드, 프로젝트 카드 | 떼어 놓아도 그 자체로 말이 되는 단위 |
-| `figure` / `figcaption` | 프로필 사진 | 설명이 붙는 이미지 |
-| `dl` / `dt` / `dd` | About 지표, 성공 패널 요약 | 이름과 값의 짝 |
-
-### Flexbox와 Grid
-
-| 방식 | 쓴 곳 | 이유 |
-| --- | --- | --- |
-| Flexbox | 내비게이션, 툴바, 태그 칩, 푸터 | 한 방향으로 흐르고 항목 수가 유동적이다. 로고와 메뉴를 양 끝으로 미는 `space-between`이 한 줄로 끝난다 |
-| Grid | Hero, Skills, Projects, 폼 | 행과 열이 함께 바뀐다. 특히 Projects는 미디어쿼리 없이 컨테이너 폭만으로 열 수가 정해져야 한다 |
-
-```css
-/* css/layout.css — 카드 열 수를 폭이 스스로 정한다 */
-.projects__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(18.75rem, 100%), 1fr));
-}
-```
-
-### 배열 메서드
-
-```js
-// filter — archived 저장소를 걸러 낸다              js/github-api.js
-repositories.filter(({ archived }) => !archived)
-
-// map — 응답 객체를 화면에 쓸 필드로 바꾼다          js/features/projects.js
-selectPortfolioRepositories(repositories).map(normalizeRepository)
-
-// map — 그 배열을 템플릿 리터럴로 카드 HTML로 바꾼다
-gridElement.innerHTML = visibleItems.map(createCardMarkup).join('');
-
-// forEach — 기존 요소의 상태만 갱신한다 (반환값이 필요 없다)
-$$('.filter-btn', filtersElement).forEach((button) => {
-  button.classList.toggle('is-active', button.dataset.language === language);
-});
-```
-
-`normalizeRepository`는 구조분해 할당으로 필요한 필드만 꺼내고, `stargazers_count` 같은 API 표기를 화면에서 쓸 이름으로 바꿉니다.
-
-```js
-export const normalizeRepository = ({
-  id, name, description, language, fork,
-  stargazers_count: stars,
-  html_url: url,
-  pushed_at: pushedAt,
-}) => ({ /* ... */ });
-```
-
-## 실행 방법
-
-ES Modules를 사용하므로 `file://`가 아닌 로컬 HTTP 주소로 열어야 합니다. VS Code에서는 Live Server로 `index.html`을 엽니다.
-
-Live Server를 쓰지 않을 때의 대안입니다.
+ES Modules 를 쓰므로 `file://` 이 아닌 HTTP 주소로 열어야 합니다.
 
 ```bash
+git clone https://github.com/b0e2/b1-1.git
+cd b1-1
+
 python3 -m http.server 8000
 ```
 
-저장소 루트에서 실행한 뒤 http://127.0.0.1:8000 에 접속합니다.
+http://127.0.0.1:8000 으로 접속합니다. VS Code 는 Live Server 로 `index.html` 을 열어도 됩니다.
 
-## 배포
+GitHub API 는 인증 없이 시간당 60회 제한이 있습니다. 짧은 시간에 반복 새로고침하면 `403` 이 돌아오고, 그때는 에러 상태 화면이 표시됩니다.
 
-GitHub Pages에서 `main` 브랜치의 `/ (root)`를 서비스합니다.
+## Deployment
 
-1. 저장소 Settings의 Pages 메뉴를 연다
-2. Source를 `Deploy from a branch`로 선택한다
-3. Branch는 `main`, 폴더는 `/ (root)`로 저장한다
-4. 배포가 끝나면 공개 URL에서 기능과 자산 경로를 확인한다
+`main` 브랜치의 `/ (root)` 를 GitHub Pages 가 서비스합니다. 빌드 단계가 없어 저장소 파일이 그대로 올라갑니다.
 
-## 스크린샷
+브랜치 전략은 git-flow 를 따릅니다. 이슈 등록 → `feature/#<번호>-<이름>` → `develop` PR → 릴리스 시점에 `main` 병합 순서입니다.
 
-| 데스크톱 라이트 · 1440px | 데스크톱 다크 · 1440px |
-| --- | --- |
-| ![데스크톱 라이트 화면](.github/screenshots/desktop-light.png) | ![데스크톱 다크 화면](.github/screenshots/desktop-dark.png) |
+## Roadmap
 
-| 모바일 다크 · 390px |
-| --- |
-| ![모바일 다크 화면](.github/screenshots/mobile-dark.png) |
-
-프로젝트 언어와 최근 push일은 촬영 시점의 응답을 기준으로 합니다.
+- 프로젝트 카드에 주요 기술 태그 표시
+- 저장소 설명을 직접 작성한 소개 문구로 교체
+- Lighthouse 성능 · 접근성 점수 측정과 개선
+- 방문자가 다크 모드를 시스템 기준으로 되돌리는 경로 제공
