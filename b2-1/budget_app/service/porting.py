@@ -53,6 +53,11 @@ class Porting:
         날짜 오름차순으로 쓴다. 다시 가져올 때 저장 순서와 날짜 순서가 같아져
         번호가 뒤섞이지 않는다. 정렬 때문에 대상 건수만큼 메모리를 쓴다.
         """
+        if self.data.is_managed(out):
+            raise ValidationError(
+                f"저장 파일을 내보내기 대상으로 쓸 수 없습니다: {out}",
+                "다른 경로를 지정하세요. 운영 데이터가 CSV 로 덮어써집니다.",
+            )
         rows = sorted(
             (tx for tx in self.ledger.stream_transactions() if query.matches(tx)),
             key=lambda tx: (tx.date, tx.seq),

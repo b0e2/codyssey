@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from budget_app.models import (
     Budget,
+    StorageError,
     MonthlySummary,
     Query,
     ValidationError,
@@ -15,6 +16,7 @@ from budget_app.models import (
     parse_month,
 )
 from budget_app.service.ledger import Ledger
+from budget_app.storage import describe_corruption
 
 
 class Reports:
@@ -26,14 +28,37 @@ class Reports:
 
     # ── 예산 ────────────────────────────────────────────────────────────
 
-    def budgets(self) -> list[Budget]:
+    def budgets(self, strict: bool = False) -> list[Budget]:
+        """예산 목록.
+
+        조회는 손상 행을 건너뛴다. 하지만 파일을 다시 쓰는 경로에서 그렇게 하면
+        읽지 못한 행이 새 파일에서 사라지므로, 그때는 strict 로 읽어 중단한다.
+        """
         items: dict[str, Budget] = {}
-        for row in self.data.budgets.stream():
+        if strict:
+            for row in self.data.budgets.stream_strict():
+                try:
+                    budget = Budget.from_dict(row)
+                except ValidationError as exc:
+                    raise StorageError(
+                        f"저장된 예산을 읽을 수 없습니다: {exc.message}",
+                        f"{self.data.budgets.path} 를 확인하세요.",
+                    ) from None
+                items[budget.month] = budget
+            return [items[month] for month in sorted(items)]
+
+        corrupt: list[int] = []
+        for line_no, row in self.data.budgets.stream_numbered(corrupt):
             try:
                 budget = Budget.from_dict(row)
             except ValidationError:
-                continue  # 손상된 예산 행은 건너뛴다. 조회를 막을 이유가 없다.
+                corrupt.append(line_no)
+                continue
             items[budget.month] = budget
+        if corrupt:
+            self.ledger.warnings.append(
+                describe_corruption(self.data.budgets.path, sorted(corrupt))
+            )
         return [items[month] for month in sorted(items)]
 
     def budget_for(self, month: str) -> int | None:
@@ -49,7 +74,7 @@ class Reports:
         덧붙이기만 하면 같은 달이 여러 줄로 쌓여 어느 값이 맞는지 알 수 없다.
         """
         budget = Budget(parse_month(month), parse_amount(amount))
-        merged = {item.month: item for item in self.budgets()}
+        merged = {item.month: item for item in self.budgets(strict=True)}
         merged[budget.month] = budget
         self.data.budgets.write_all(
             merged[key].to_dict() for key in sorted(merged)

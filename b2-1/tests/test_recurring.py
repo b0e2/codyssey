@@ -102,9 +102,18 @@ class ApplyTest(RecurringTestCase):
         self.assertEqual(len(created), 1)
         self.assertEqual(created[0].amount, 600_000)
 
-    def test_missing_category_is_skipped_with_a_warning(self) -> None:
+    def test_category_used_by_a_rule_cannot_be_removed(self) -> None:
         self.rule(category="food")
-        Ledger(self.data).remove_category("food")
+        with self.assertRaises(ValidationError) as ctx:
+            Ledger(self.data).remove_category("food")
+        self.assertIn("반복 규칙", ctx.exception.message)
+
+    def test_missing_category_is_skipped_with_a_warning(self) -> None:
+        # 파일을 직접 고쳐 카테고리가 사라진 경우에도 나머지 규칙까지 막지 않는다.
+        self.rule(category="food")
+        self.data.categories.write_all(
+            row for row in self.data.categories.stream() if row.get("name") != "food"
+        )
         recurring = self.recurring()
         self.assertEqual(recurring.apply("2024-03"), [])
         self.assertTrue(recurring.warnings)
