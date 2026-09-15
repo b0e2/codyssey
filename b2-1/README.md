@@ -13,6 +13,8 @@ python -m budget_app --help          # 전체 명령
 python -m budget_app search --help   # 명령별 옵션
 ```
 
+`python` 이 없는 환경에서는 `python3` 로 실행한다.
+
 전역 옵션은 서브커맨드 앞뒤 어디에 와도 된다.
 
 | 옵션 | 설명 |
@@ -33,7 +35,7 @@ python -m budget_app search --help   # 명령별 옵션
 | `data/app.log` | 실행 로그 (메모·태그는 길이만 기록) |
 | `data/backups/<타임스탬프>/` | `backup` 으로 만든 사본 |
 
-형식은 **JSONL** — 한 줄에 JSON 객체 하나다. 행이 곧 스트리밍 단위여서 파일 전체를 메모리에 올리지 않고 읽을 수 있고, 태그 배열이나 쉼표가 들어간 메모를 이스케이프 없이 담을 수 있다.
+형식은 **JSONL** — 한 줄에 JSON 객체 하나다. 행이 곧 스트리밍 단위여서 파일 전체를 메모리에 올리지 않고 읽을 수 있고, 태그 배열을 그대로 담을 수 있다. 쉼표가 들어간 메모도 CSV 처럼 인용 규칙을 따로 신경 쓸 필요가 없다(JSON 문자열 이스케이프는 `json` 모듈이 처리한다).
 
 ```json
 {"id": "TX-000012", "type": "expense", "date": "2024-01-15", "amount": 15000, "category": "food", "memo": "점심", "tags": ["meal"]}
@@ -88,6 +90,7 @@ python -m budget_app category remove --name food --replace-with etc
 ```
 
 사용 중인 카테고리는 `--replace-with` 없이는 지울 수 없다. 대체 카테고리를 주면 해당 거래를 모두 옮긴 뒤 삭제한다.
+반복 규칙이 참조하는 카테고리는 삭제할 수 없다. 규칙을 먼저 정리해야 한다.
 
 ### 예산·요약
 
@@ -120,7 +123,8 @@ python -m budget_app export --out export.csv --from 2024-01-01 --to 2024-03-31
 python -m budget_app import --from import.csv
 ```
 
-`export` 는 `--month` 또는 `--from`/`--to` 중 **하나를 반드시** 받는다(둘을 같이 쓸 수는 없다).
+`export` 는 `--month` 또는 `--from`+`--to` 중 **하나를 반드시** 받는다. 기간을 쓸 때는 양쪽을 모두 지정해야 하며, `--month` 와 함께 쓸 수는 없다.
+`--out` 으로 저장 파일 경로를 지정하면 거부한다. 운영 데이터가 CSV 로 덮어써지기 때문이다.
 
 ### 백업·반복 내역
 
@@ -178,7 +182,11 @@ $ python -m budget_app add
 날짜(YYYY-MM-DD): 2024-13-40
 [오류] 날짜 형식이 올바르지 않습니다 (YYYY-MM-DD).
 [힌트] 예: 2024-01-15
+날짜(YYYY-MM-DD): 2024-01-15
+타입(income/expense): ...
 ```
+
+같은 항목을 3회 연속 잘못 입력하면 종료 코드 2로 중단한다.
 
 ## 구조
 
@@ -201,7 +209,8 @@ budget_app/
 - **원자성은 파일 하나 단위다.** 임시 파일에 쓰고 `os.replace` 로 바꾸므로 한 파일이 반쯤 쓰인 상태로 남지 않는다. 다만 `category remove --replace-with` 는 거래 파일과 카테고리 파일을 함께 바꾸며, 이 둘은 원자적이지 않다. 거래를 먼저 커밋하므로 중간에 실패해도 쓰이지 않는 카테고리가 남을 뿐 참조가 깨지지는 않는다.
 - **동시 실행을 가정하지 않는다.** 여러 프로세스가 같은 데이터 디렉터리에 동시에 쓰면 결과를 보장하지 않는다.
 - **CSV 에는 `id` 와 `source` 가 없다.** 같은 파일을 두 번 `import` 하면 거래가 중복되고, 반복 내역을 CSV 로 내보냈다 다시 가져오면 출처가 사라져 같은 달에 `apply` 할 때 다시 생성된다.
-- **읽기 명령은 손상된 행을 건너뛴다.** 건너뛴 줄 번호를 `stderr` 로 알리되 종료 코드는 0이므로, 자동화에서는 `stderr` 를 함께 확인해야 한다. 파일을 통째로 다시 쓰는 명령(`update`/`delete`/`category remove`/`import`)은 손상 행이 있으면 원본을 건드리지 않고 중단한다.
+- **읽기 명령은 손상된 행을 건너뛴다.** 건너뛴 줄 번호를 `stderr` 로 알리되 종료 코드는 0이므로, 자동화에서는 `stderr` 를 함께 확인해야 한다. 파일을 통째로 다시 쓰는 명령(`update` / `delete` / `category remove` / `budget set` / `recurring remove` / `recurring apply` / `import`)은 손상 행이 있으면 원본을 건드리지 않고 종료 코드 4로 중단한다.
+- **기본 카테고리는 파일을 처음 만들 때만 넣는다.** 카테고리를 모두 지운 상태는 그대로 유지되며, 손상된 카테고리 파일을 기본값으로 덮어쓰지 않는다.
 
 ## 테스트
 

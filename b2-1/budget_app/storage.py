@@ -11,6 +11,7 @@ import json
 import os
 import shutil
 import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -21,6 +22,22 @@ from budget_app.models import StorageError
 DEFAULT_CATEGORIES = ("food", "transport", "rent", "salary", "etc")
 _MAX_REPORTED_LINES = 10
 _TAIL_BLOCK = 4096
+
+
+@contextmanager
+def _reading(path: Path):
+    """읽기 실패를 저장소 오류로 분류한다. 그대로 두면 내부 오류(1)로 새어 나간다."""
+    try:
+        fp = path.open(encoding="utf-8")
+    except OSError as exc:
+        raise StorageError(
+            f"파일을 읽을 수 없습니다: {path}",
+            f"경로와 권한을 확인하세요 ({exc.strerror}).",
+        ) from None
+    try:
+        yield fp
+    finally:
+        fp.close()
 
 
 def _corruption_hint(path: Path, line_no: int) -> str:
@@ -39,15 +56,25 @@ class JsonlStore:
     # ── 읽기 ────────────────────────────────────────────────────────────
 
     def stream(self, corrupt_lines: list[int] | None = None) -> Iterator[dict[str, Any]]:
+        for _, row in self.stream_numbered(corrupt_lines):
+            yield row
+
+    def stream_numbered(
+        self, corrupt_lines: list[int] | None = None
+    ) -> Iterator[tuple[int, dict[str, Any]]]:
         """행을 하나씩 흘린다. 파일 전체를 메모리에 올리지 않는다.
 
         손상된 행은 건너뛰고, 줄 번호를 `corrupt_lines` 에 모은다. 저장소 전용
         리포트 타입을 만들지 않고 int 목록을 받는 이유는, 그 타입이 서비스와
         CLI 까지 올라가면 계층 경계가 흐려지기 때문이다.
+
+        줄 번호를 함께 내보내는 이유는, 서비스가 모델 검증에 실패한 행을
+        기록할 때도 실제 파일 위치를 써야 하기 때문이다. 세어 가며 매기면
+        앞에 있는 빈 줄이나 깨진 줄만큼 어긋난다.
         """
         if not self.path.exists():
             return
-        with self.path.open(encoding="utf-8") as fp:
+        with _reading(self.path) as fp:
             for line_no, line in enumerate(fp, start=1):
                 text = line.strip()
                 if not text:
@@ -62,7 +89,7 @@ class JsonlStore:
                     if corrupt_lines is not None:
                         corrupt_lines.append(line_no)
                     continue
-                yield row
+                yield line_no, row
 
     def stream_strict(self) -> Iterator[dict[str, Any]]:
         """손상 행을 만나면 즉시 중단한다.
@@ -72,7 +99,7 @@ class JsonlStore:
         """
         if not self.path.exists():
             return
-        with self.path.open(encoding="utf-8") as fp:
+        with _reading(self.path) as fp:
             for line_no, line in enumerate(fp, start=1):
                 text = line.strip()
                 if not text:
@@ -147,8 +174,14 @@ class JsonlStore:
                 f"{self.path.name} 의 마지막 행이 완결되지 않아 이어쓸 수 없습니다.",
                 "파일 끝에 줄바꿈을 넣거나 깨진 줄을 정리한 뒤 다시 실행하세요.",
             )
-        with self.path.open("a", encoding="utf-8") as fp:
-            fp.write(json.dumps(row, ensure_ascii=False) + "\n")
+        try:
+            with self.path.open("a", encoding="utf-8") as fp:
+                fp.write(json.dumps(row, ensure_ascii=False) + "\n")
+        except OSError as exc:
+            raise StorageError(
+                f"파일에 쓸 수 없습니다: {self.path}",
+                f"경로와 권한을 확인하세요 ({exc.strerror}).",
+            ) from None
 
     def _ends_with_newline(self) -> bool:
         if not self.path.exists() or self.path.stat().st_size == 0:
@@ -163,7 +196,13 @@ class JsonlStore:
         임시 파일에 전부 쓰고 fsync 한 뒤 os.replace 로 바꾼다. 중간에 실패하면
         임시 파일만 버려지고 원본은 그대로 남는다.
         """
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise StorageError(
+                f"디렉터리를 만들 수 없습니다: {self.path.parent}",
+                f"경로와 권한을 확인하세요 ({exc.strerror}).",
+            ) from None
         tmp = tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
@@ -181,6 +220,12 @@ class JsonlStore:
                 tmp.flush()
                 os.fsync(tmp.fileno())
             os.replace(tmp.name, self.path)
+        except OSError as exc:
+            Path(tmp.name).unlink(missing_ok=True)
+            raise StorageError(
+                f"파일을 저장할 수 없습니다: {self.path}",
+                f"경로와 권한을 확인하세요 ({exc.strerror}).",
+            ) from None
         except BaseException:
             Path(tmp.name).unlink(missing_ok=True)
             raise
@@ -247,15 +292,35 @@ class DataDir:
         return (self.transactions, self.categories, self.budgets, self.recurring)
 
     def ensure(self) -> bool:
-        """없으면 만들고 기본 카테고리를 넣는다. 시드를 넣었으면 True."""
-        self.root.mkdir(parents=True, exist_ok=True)
-        for store in self.stores:
-            if not store.path.exists():
-                store.path.touch()
-        if next(self.categories.stream(), None) is None:
+        """없으면 만들고 기본 카테고리를 넣는다. 시드를 넣었으면 True.
+
+        시드는 카테고리 파일을 **이번에 새로 만들었을 때만** 넣는다.
+        "읽을 수 있는 행이 없으면 시드"로 두면 손상된 파일이 기본값으로
+        덮어써지고, 사용자가 카테고리를 모두 지워도 다음 실행에서 되살아난다.
+        조회나 백업처럼 읽기만 해야 하는 명령도 이 경로를 지나간다.
+        """
+        try:
+            self.root.mkdir(parents=True, exist_ok=True)
+            seeded = not self.categories.path.exists()
+            for store in self.stores:
+                if not store.path.exists():
+                    store.path.touch()
+        except OSError as exc:
+            raise StorageError(
+                f"데이터 디렉터리를 준비할 수 없습니다: {self.root}",
+                f"경로와 권한을 확인하세요 ({exc.strerror}).",
+            ) from None
+        if seeded:
             self.categories.write_all({"name": name} for name in DEFAULT_CATEGORIES)
-            return True
-        return False
+        return seeded
+
+    def is_managed(self, path: Path) -> bool:
+        """저장소가 관리하는 파일인지. 내보내기가 운영 데이터를 덮어쓰지 못하게 쓴다."""
+        try:
+            resolved = path.resolve()
+        except OSError:
+            return False
+        return any(store.path.resolve() == resolved for store in self.stores)
 
     def backup(self, label: str | None = None) -> Path:
         """저장 파일을 타임스탬프 디렉터리에 복사한다.

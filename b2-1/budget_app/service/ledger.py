@@ -37,12 +37,37 @@ class Ledger:
 
     # ── 카테고리 ────────────────────────────────────────────────────────
 
-    def categories(self) -> list[str]:
-        return [
-            str(row["name"])
-            for row in self.data.categories.stream()
-            if isinstance(row.get("name"), str)
-        ]
+    def categories(self, strict: bool = False) -> list[str]:
+        """카테고리 목록.
+
+        파일을 다시 쓰는 경로에서는 strict 로 읽는다. 손상 행을 건너뛴 채
+        저장하면 읽지 못한 카테고리가 사라진다.
+        """
+        if strict:
+            names: list[str] = []
+            for row in self.data.categories.stream_strict():
+                name = row.get("name")
+                if not isinstance(name, str):
+                    raise StorageError(
+                        "저장된 카테고리를 읽을 수 없습니다.",
+                        f"{self.data.categories.path} 를 확인하세요.",
+                    )
+                names.append(name)
+            return names
+
+        corrupt: list[int] = []
+        names = []
+        for line_no, row in self.data.categories.stream_numbered(corrupt):
+            name = row.get("name")
+            if isinstance(name, str):
+                names.append(name)
+            else:
+                corrupt.append(line_no)
+        if corrupt:
+            self.warnings.append(
+                describe_corruption(self.data.categories.path, sorted(corrupt))
+            )
+        return names
 
     def require_category(self, name: str) -> str:
         category = normalize_category(name)
@@ -58,11 +83,12 @@ class Ledger:
     def stream_transactions(self) -> Iterator[Transaction]:
         """정상 행만 흘린다. 손상 행과 규칙에 어긋난 행은 건너뛰고 경고로 모은다."""
         corrupt: list[int] = []
-        rows = self.data.transactions.stream(corrupt)
-        for line_no, row in enumerate(rows, start=1):
+        for line_no, row in self.data.transactions.stream_numbered(corrupt):
             try:
                 yield Transaction.from_dict(row)
             except ValidationError:
+                # 실제 파일 줄 번호로 기록한다. 세어 가며 매기면 앞의 빈 줄이나
+                # 깨진 줄만큼 어긋나 사용자가 엉뚱한 줄을 찾게 된다.
                 corrupt.append(line_no)
         if corrupt:
             self.warnings.append(
@@ -227,6 +253,13 @@ class Ledger:
                 f"등록되지 않은 카테고리입니다: {category}", "category list 로 확인하세요."
             )
 
+        rules_using = self._rules_using(category)
+        if rules_using:
+            raise ValidationError(
+                f"'{category}' 를 사용하는 반복 규칙이 {rules_using}개 있습니다.",
+                "recurring remove 로 규칙을 먼저 정리하세요.",
+            )
+
         used = self.count_by_category(category)
         if used and replace_with is None:
             raise ValidationError(
@@ -250,9 +283,42 @@ class Ledger:
             self._rewrite(transform)
 
         self.data.categories.write_all(
-            {"name": item} for item in self.categories() if item != category
+            {"name": item} for item in self.categories(strict=True) if item != category
         )
         return used
+
+    def _rules_using(self, category: str) -> int:
+        """반복 규칙이 참조하는지 센다.
+
+        규칙 모델을 몰라도 되는 일이라 dict 그대로 읽는다. 여기서 막지 않으면
+        규칙만 존재하지 않는 카테고리를 가리킨 채 남는다.
+        """
+        return sum(
+            1
+            for row in self.data.recurring.stream()
+            if row.get("category") == category
+        )
+
+
+    def add_many(self, transactions: list[Transaction]) -> list[Transaction]:
+        """여러 거래를 한 번의 교체로 저장한다.
+
+        하나씩 append 하면 중간에 실패했을 때 일부만 남아 다시 실행하기
+        어려워진다.
+        """
+        if not transactions:
+            return []
+        for tx in transactions:
+            self.require_category(tx.category)
+        store = self.data.transactions
+        rows = [tx.to_dict() for tx in transactions]
+        store.write_all(self._chain(store.stream_strict(), rows))
+        return transactions
+
+    @staticmethod
+    def _chain(existing, new_rows):
+        yield from existing
+        yield from new_rows
 
 
 def open_ledger(data_dir: Path) -> tuple[Ledger, list[str]]:

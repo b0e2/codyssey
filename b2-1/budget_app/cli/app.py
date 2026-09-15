@@ -308,6 +308,7 @@ def cmd_category(ctx: Context, args: Namespace) -> int:
 
     if args.action == "list":
         categories = ledger.categories()
+        _report_warnings(ledger)
         if not categories:
             print("[안내] 등록된 카테고리가 없습니다.")
             return 0
@@ -337,6 +338,7 @@ def cmd_budget(ctx: Context, args: Namespace) -> int:
         return 0
 
     budgets = reports.budgets()
+    _report_warnings(reports.ledger)
     if not budgets:
         print("[안내] 설정된 예산이 없습니다.")
         return 0
@@ -352,6 +354,10 @@ def cmd_budget(ctx: Context, args: Namespace) -> int:
 
 @as_command
 def cmd_summary(ctx: Context, args: Namespace) -> int:
+    if args.top <= 0:
+        # 데이터 유무와 관계없이 같은 입력은 같게 판정해야 한다.
+        raise ValidationError("--top 은 1 이상이어야 합니다.", f"입력값: {args.top}")
+
     ledger = _open_ledger(ctx)
     summary = Reports(ledger).summarize(args.month)
     _report_warnings(ledger)
@@ -386,15 +392,16 @@ def cmd_summary(ctx: Context, args: Namespace) -> int:
 
 @as_command
 def cmd_export(ctx: Context, args: Namespace) -> int:
-    if not args.month and not (args.date_from or args.date_to):
-        raise ValidationError(
-            "기간 조건이 필요합니다.",
-            "--month YYYY-MM 또는 --from YYYY-MM-DD --to YYYY-MM-DD 를 지정하세요.",
-        )
     if args.month and (args.date_from or args.date_to):
         raise ValidationError(
             "--month 와 --from/--to 는 함께 쓸 수 없습니다.",
             "둘 중 하나만 지정하세요.",
+        )
+    if not args.month and not (args.date_from and args.date_to):
+        # 한쪽만 주면 열린 구간이 되어 의도보다 훨씬 많은 데이터가 나간다.
+        raise ValidationError(
+            "기간 조건이 필요합니다.",
+            "--month YYYY-MM 또는 --from YYYY-MM-DD --to YYYY-MM-DD 를 지정하세요.",
         )
 
     ledger = _open_ledger(ctx)
@@ -435,6 +442,9 @@ def cmd_recurring(ctx: Context, args: Namespace) -> int:
 
     if args.action == "list":
         rules = recurring.rules()
+        _report_warnings(ledger)
+        for warning in recurring.warnings:
+            print(warning, file=sys.stderr)
         if not rules:
             print("[안내] 등록된 반복 규칙이 없습니다.")
             return 0

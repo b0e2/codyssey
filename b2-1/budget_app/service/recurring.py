@@ -8,15 +8,18 @@ from __future__ import annotations
 
 from budget_app.models import (
     NotFoundError,
+    Transaction as _Transaction,
     RecurringRule,
     StorageError,
     Transaction,
     ValidationError,
     clamp_day,
+    format_tx_id,
     new_rule_id,
     parse_month,
 )
 from budget_app.service.ledger import Ledger
+from budget_app.storage import describe_corruption
 
 
 class Recurring:
@@ -27,13 +30,34 @@ class Recurring:
 
     # ── 규칙 ────────────────────────────────────────────────────────────
 
-    def rules(self) -> list[RecurringRule]:
+    def rules(self, strict: bool = False) -> list[RecurringRule]:
+        """규칙 목록.
+
+        조회는 손상 행을 건너뛰지만, 파일을 다시 쓰는 경로에서는 중단한다.
+        건너뛴 채 저장하면 읽지 못한 규칙이 사라진다.
+        """
         items: list[RecurringRule] = []
-        for row in self.data.recurring.stream():
+        if strict:
+            for row in self.data.recurring.stream_strict():
+                try:
+                    items.append(RecurringRule.from_dict(row))
+                except ValidationError as exc:
+                    raise StorageError(
+                        f"저장된 반복 규칙을 읽을 수 없습니다: {exc.message}",
+                        f"{self.data.recurring.path} 를 확인하세요.",
+                    ) from None
+            return items
+
+        corrupt: list[int] = []
+        for line_no, row in self.data.recurring.stream_numbered(corrupt):
             try:
                 items.append(RecurringRule.from_dict(row))
             except ValidationError:
-                continue  # 손상된 규칙 행은 목록에서 빼고 조회를 막지 않는다
+                corrupt.append(line_no)
+        if corrupt:
+            self.warnings.append(
+                describe_corruption(self.data.recurring.path, sorted(corrupt))
+            )
         return items
 
     def add(self, rule: RecurringRule) -> RecurringRule:
@@ -66,14 +90,15 @@ class Recurring:
         )
 
     def remove(self, rule_id: str) -> RecurringRule:
-        target = next((r for r in self.rules() if r.id == rule_id), None)
+        remaining = self.rules(strict=True)
+        target = next((r for r in remaining if r.id == rule_id), None)
         if target is None:
             raise NotFoundError(
                 f"반복 규칙을 찾을 수 없습니다: {rule_id}",
                 "recurring list 로 id 를 확인하세요.",
             )
         self.data.recurring.write_all(
-            r.to_dict() for r in self.rules() if r.id != rule_id
+            r.to_dict() for r in remaining if r.id != rule_id
         )
         return target
 
@@ -102,6 +127,7 @@ class Recurring:
         target = parse_month(month)
         done = self.applied_sources()
         categories = set(self.ledger.categories())
+        next_seq = int(self.ledger.next_id()[3:])
         created: list[Transaction] = []
 
         for rule in self.rules():
@@ -114,14 +140,19 @@ class Recurring:
                 )
                 continue
             created.append(
-                self.ledger.create(
+                _Transaction(
+                    id=format_tx_id(next_seq),
                     date=clamp_day(target, rule.day),
                     type=rule.type,
                     category=rule.category,
                     amount=rule.amount,
                     memo=rule.memo,
-                    tags=rule.tags,
+                    tags=list(rule.tags),
                     source=source,
                 )
             )
-        return created
+            next_seq += 1
+
+        # 규칙마다 따로 쓰지 않는다. 뒤쪽에서 실패하면 앞쪽 거래만 남아
+        # 어디까지 적용됐는지 알 수 없다.
+        return self.ledger.add_many(created)
