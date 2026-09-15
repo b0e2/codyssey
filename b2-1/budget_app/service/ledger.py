@@ -223,6 +223,16 @@ class Ledger:
             )
         return removed[0]
 
+    def strict_rows(self) -> Iterator[dict[str, Any]]:
+        """저장된 거래를 모델로 검증한 뒤 다시 dict 로 흘린다.
+
+        파일을 통째로 다시 쓰는 경로가 기존 행을 그대로 복사하면, JSON 문법만
+        맞고 규칙에 어긋난 행이 새 파일에도 그대로 남는다. 덧붙이는 경로라도
+        파일 전체를 다시 쓰는 이상 같은 기준을 적용한다.
+        """
+        for row in self.data.transactions.stream_strict():
+            yield self._to_transaction(row).to_dict()
+
     def _to_transaction(self, row: dict[str, Any]) -> Transaction:
         """쓰기 경로에서는 규칙에 어긋난 행도 손상으로 본다."""
         try:
@@ -327,7 +337,7 @@ class Ledger:
             self.require_category(tx.category)
         store = self.data.transactions
         rows = [tx.to_dict() for tx in transactions]
-        store.write_all(self._chain(store.stream_strict(), rows))
+        store.write_all(self._chain(self.strict_rows(), rows))
         return transactions
 
     @staticmethod
