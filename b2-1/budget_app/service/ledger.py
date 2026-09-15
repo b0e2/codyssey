@@ -47,12 +47,15 @@ class Ledger:
             names: list[str] = []
             for row in self.data.categories.stream_strict():
                 name = row.get("name")
-                if not isinstance(name, str):
+                try:
+                    if not isinstance(name, str):
+                        raise ValidationError("카테고리 이름이 문자열이 아닙니다.")
+                    names.append(normalize_category(name))
+                except ValidationError as exc:
                     raise StorageError(
-                        "저장된 카테고리를 읽을 수 없습니다.",
+                        f"저장된 카테고리를 읽을 수 없습니다: {exc.message}",
                         f"{self.data.categories.path} 를 확인하세요.",
-                    )
-                names.append(name)
+                    ) from None
             return names
 
         corrupt: list[int] = []
@@ -166,10 +169,15 @@ class Ledger:
     def _rewrite(self, transform) -> None:
         """거래 파일을 통째로 다시 쓴다.
 
-        손상 행이 있으면 저장소가 중단시킨다. 건너뛴 채 다시 쓰면 읽지 못한
-        원본이 새 파일에서 사라지기 때문이다.
+        모든 행을 모델로 복원한 뒤 넘긴다. JSON 문법만 보면 필수 항목이
+        빠졌거나 금액이 0인 행이 그대로 다시 저장되고, 손상 행이 있으면
+        중단한다는 약속도 문법 오류에만 적용된다.
         """
-        self.data.transactions.rewrite(transform)
+
+        def guarded(row: dict[str, Any]) -> dict[str, Any] | None:
+            return transform(self._to_transaction(row))
+
+        self.data.transactions.rewrite(guarded)
 
     def update(self, tx_id: str, changes: dict[str, Any]) -> Transaction:
         if not changes:
@@ -183,12 +191,11 @@ class Ledger:
 
         updated: list[Transaction] = []
 
-        def transform(row: dict[str, Any]) -> dict[str, Any]:
-            if row.get("id") != wanted:
-                return row
-            current = self._to_transaction(row)
+        def transform(tx: Transaction) -> dict[str, Any]:
+            if tx.id != wanted:
+                return tx.to_dict()
             # dataclass replace 가 __post_init__ 을 다시 태우므로 변경분도 검증된다.
-            new_tx = replace(current, **changes)
+            new_tx = replace(tx, **changes)
             updated.append(new_tx)
             return new_tx.to_dict()
 
@@ -203,10 +210,10 @@ class Ledger:
         wanted = parse_tx_id(tx_id)
         removed: list[Transaction] = []
 
-        def transform(row: dict[str, Any]) -> dict[str, Any] | None:
-            if row.get("id") != wanted:
-                return row
-            removed.append(self._to_transaction(row))
+        def transform(tx: Transaction) -> dict[str, Any] | None:
+            if tx.id != wanted:
+                return tx.to_dict()
+            removed.append(tx)
             return None
 
         self._rewrite(transform)
@@ -248,7 +255,10 @@ class Ledger:
         중간 실패 시 쓰이지 않는 카테고리가 남을 뿐이다.
         """
         category = normalize_category(name)
-        if category not in self.categories():
+        # 카테고리 파일 검사를 먼저 끝낸다. 거래를 옮긴 뒤에 이 파일이 손상된 걸
+        # 알게 되면, 명령은 실패했는데 거래만 바뀐 상태로 남는다.
+        registered = self.categories(strict=True)
+        if category not in registered:
             raise NotFoundError(
                 f"등록되지 않은 카테고리입니다: {category}", "category list 로 확인하세요."
             )
@@ -268,22 +278,27 @@ class Ledger:
             )
 
         if used:
-            target = self.require_category(str(replace_with))
+            target = normalize_category(str(replace_with))
+            if target not in registered:
+                raise NotFoundError(
+                    f"등록되지 않은 카테고리입니다: {target}",
+                    "category list 로 목록을 보거나 category add 로 등록하세요.",
+                )
             if target == category:
                 raise ValidationError(
                     "대체 카테고리가 삭제할 카테고리와 같습니다.",
                     "다른 카테고리를 지정하세요.",
                 )
 
-            def transform(row: dict[str, Any]) -> dict[str, Any]:
-                if row.get("category") != category:
-                    return row
-                return {**row, "category": target}
+            def transform(tx: Transaction) -> dict[str, Any]:
+                if tx.category != category:
+                    return tx.to_dict()
+                return replace(tx, category=target).to_dict()
 
             self._rewrite(transform)
 
         self.data.categories.write_all(
-            {"name": item} for item in self.categories(strict=True) if item != category
+            {"name": item} for item in registered if item != category
         )
         return used
 

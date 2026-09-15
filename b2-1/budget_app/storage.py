@@ -25,19 +25,36 @@ _TAIL_BLOCK = 4096
 
 
 @contextmanager
-def _reading(path: Path):
-    """읽기 실패를 저장소 오류로 분류한다. 그대로 두면 내부 오류(1)로 새어 나간다."""
+def io_guard(path: Path, action: str = "처리"):
+    """파일 작업 실패를 저장소 오류로 분류한다.
+
+    그대로 두면 예상치 못한 내부 오류(1)로 새어 나가, 파일 문제인데도
+    종료 코드가 문서와 달라진다. 인코딩 오류도 같은 부류로 본다.
+    """
     try:
-        fp = path.open(encoding="utf-8")
+        yield
+    except StorageError:
+        raise
+    except UnicodeDecodeError:
+        raise StorageError(
+            f"파일이 UTF-8 이 아닙니다: {path}",
+            "UTF-8 로 저장한 파일인지 확인하세요.",
+        ) from None
     except OSError as exc:
         raise StorageError(
-            f"파일을 읽을 수 없습니다: {path}",
+            f"파일을 {action}할 수 없습니다: {path}",
             f"경로와 권한을 확인하세요 ({exc.strerror}).",
         ) from None
-    try:
-        yield fp
-    finally:
-        fp.close()
+
+
+@contextmanager
+def _reading(path: Path):
+    with io_guard(path, "읽기"):
+        fp = path.open(encoding="utf-8")
+        try:
+            yield fp
+        finally:
+            fp.close()
 
 
 def _corruption_hint(path: Path, line_no: int) -> str:
@@ -123,9 +140,10 @@ class JsonlStore:
 
         거래 id 채번이 전체 스캔 없이 끝나도록 하기 위한 것이다.
         """
-        if not self.path.exists() or self.path.stat().st_size == 0:
-            return None
-        text = self._last_nonempty_line()
+        with io_guard(self.path, "읽기"):
+            if not self.path.exists() or self.path.stat().st_size == 0:
+                return None
+            text = self._last_nonempty_line()
         if text is None:
             return None
         try:
@@ -184,11 +202,12 @@ class JsonlStore:
             ) from None
 
     def _ends_with_newline(self) -> bool:
-        if not self.path.exists() or self.path.stat().st_size == 0:
-            return True
-        with self.path.open("rb") as fp:
-            fp.seek(-1, io.SEEK_END)
-            return fp.read(1) == b"\n"
+        with io_guard(self.path, "읽기"):
+            if not self.path.exists() or self.path.stat().st_size == 0:
+                return True
+            with self.path.open("rb") as fp:
+                fp.seek(-1, io.SEEK_END)
+                return fp.read(1) == b"\n"
 
     def write_all(self, rows: Iterable[dict[str, Any]]) -> int:
         """파일 내용을 통째로 교체한다.
@@ -203,14 +222,15 @@ class JsonlStore:
                 f"디렉터리를 만들 수 없습니다: {self.path.parent}",
                 f"경로와 권한을 확인하세요 ({exc.strerror}).",
             ) from None
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=self.path.parent,
-            prefix=f".{self.path.name}.",
-            suffix=".tmp",
-            delete=False,
-        )
+        with io_guard(self.path, "저장"):
+            tmp = tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.path.parent,
+                prefix=f".{self.path.name}.",
+                suffix=".tmp",
+                delete=False,
+            )
         written = 0
         try:
             with tmp:
@@ -239,7 +259,10 @@ class JsonlStore:
         )
 
     def _fsync_dir(self) -> None:
-        fd = os.open(self.path.parent, os.O_RDONLY)
+        try:
+            fd = os.open(self.path.parent, os.O_RDONLY)
+        except OSError:
+            return  # 디렉터리 fsync 는 최선 노력이다. 교체 자체는 이미 끝났다.
         try:
             os.fsync(fd)
         except OSError:
@@ -249,12 +272,13 @@ class JsonlStore:
 
     def copy_to(self, dest_dir: Path) -> Path | None:
         """백업용 복사. 파싱하지 않고 바이트 그대로 옮긴다."""
-        if not self.path.exists():
-            return None
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        dest = dest_dir / self.path.name
-        shutil.copy2(self.path, dest)
-        return dest
+        with io_guard(dest_dir, "복사"):
+            if not self.path.exists():
+                return None
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest = dest_dir / self.path.name
+            shutil.copy2(self.path, dest)
+            return dest
 
 
 def describe_corruption(path: Path, corrupt_lines: list[int]) -> str:
@@ -329,11 +353,13 @@ class DataDir:
         나중에 다른 파일이 생겨도 백업 대상이 저절로 늘지 않게 하려는 것이다.
         """
         stamp = label or datetime.now().strftime("%Y%m%d-%H%M%S")
-        dest = self.root / "backups" / stamp
-        suffix = 2
-        while dest.exists():
-            dest = self.root / "backups" / f"{stamp}-{suffix}"
-            suffix += 1
+        with io_guard(self.root / "backups", "생성"):
+            dest = self.root / "backups" / stamp
+            suffix = 2
+            while dest.exists():
+                dest = self.root / "backups" / f"{stamp}-{suffix}"
+                suffix += 1
+            dest.mkdir(parents=True, exist_ok=True)
         for store in self.stores:
             store.copy_to(dest)
         return dest
