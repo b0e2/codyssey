@@ -26,6 +26,7 @@ from budget_app.models import (
 )
 from budget_app.service.ledger import Ledger
 from budget_app.service.porting import Porting
+from budget_app.service.recurring import Recurring
 from budget_app.service.reports import Reports
 from budget_app.storage import DEFAULT_CATEGORIES, DataDir
 
@@ -422,6 +423,78 @@ def cmd_import(ctx: Context, args: Namespace) -> int:
 
 
 @as_command
+def cmd_backup(ctx: Context, args: Namespace) -> int:
+    dest = Porting(_open_ledger(ctx)).backup()
+    print(f"[백업 완료] {dest}")
+    return 0
+
+
+@as_command
+def cmd_recurring(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    recurring = Recurring(ledger)
+
+    if args.action == "list":
+        rules = recurring.rules()
+        if not rules:
+            print("[안내] 등록된 반복 규칙이 없습니다.")
+            return 0
+        print(
+            render_table(
+                ("id", "이름", "일자", "타입", "카테고리", "금액"),
+                [
+                    [r.id, r.name, str(r.day), r.type, r.category, format_amount(r.amount)]
+                    for r in rules
+                ],
+                ("left", "left", "right", "left", "left", "right"),
+            )
+        )
+        return 0
+
+    if args.action == "add":
+        name = _ask("규칙 이름", lambda raw: raw.strip() or _blank("규칙 이름"))
+        day = _ask("일자(1-31)", _parse_day)
+        tx_type = _ask("타입(income/expense)", parse_type)
+        category = _ask("카테고리", ledger.require_category)
+        amount = _ask("금액(양수)", parse_amount)
+        memo = _ask("메모(선택)", lambda raw: raw.strip(), optional=True)
+        tags = _ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True)
+        rule = recurring.create(
+            name=name, day=day, type=tx_type, category=category,
+            amount=amount, memo=memo, tags=tags,
+        )
+        print(f"[저장 완료] id={rule.id} {rule.name} 매월 {rule.day}일")
+        return 0
+
+    if args.action == "remove":
+        rule = recurring.remove(args.rule_id)
+        print(f"[삭제 완료] id={rule.id} {rule.name}")
+        return 0
+
+    created = recurring.apply(args.month)
+    _report_warnings(ledger)
+    for warning in recurring.warnings:
+        print(warning, file=sys.stderr)
+    if not created:
+        print(f"[안내] {args.month} 에 새로 생성할 반복 내역이 없습니다.")
+        return 0
+    print(f"[완료] {args.month} 반복 내역 {len(created)}건 생성")
+    _print_transactions(created)
+    return 0
+
+
+def _blank(label: str):
+    raise ValidationError(f"{label}은(는) 비어 있을 수 없습니다.", "값을 입력하세요.")
+
+
+def _parse_day(raw: str) -> int:
+    text = raw.strip()
+    if not text.isdigit() or not 1 <= int(text) <= 31:
+        raise ValidationError("일자는 1~31 사이의 정수여야 합니다.", "예: 25")
+    return int(text)
+
+
+@as_command
 def _unimplemented(ctx: Context, args: Namespace) -> int:
     raise AppError(
         f"'{args.command}' 명령은 아직 구현되지 않았습니다.",
@@ -440,6 +513,8 @@ HANDLERS: dict[str, Handler] = {
     "summary": cmd_summary,
     "export": cmd_export,
     "import": cmd_import,
+    "backup": cmd_backup,
+    "recurring": cmd_recurring,
 }
 
 

@@ -176,3 +176,13 @@ class Porting:
             writer.writerow(("line_no", "reason"))
             writer.writerows(failures)
         return path
+
+    # ── 백업 ────────────────────────────────────────────────────────────
+
+    def backup(self) -> Path:
+        """저장 파일을 타임스탬프 디렉터리에 복사한다.
+
+        파싱하지 않고 바이트 그대로 옮긴다. 손상된 파일이라도 원본 그대로
+        남겨야 나중에 손으로 고칠 수 있다.
+        """
+        return self.data.backup()
