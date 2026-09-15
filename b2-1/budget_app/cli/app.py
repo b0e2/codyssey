@@ -6,11 +6,26 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from argparse import Namespace
 from pathlib import Path
 
+from budget_app.cli.render import format_amount, render_table
 from budget_app.decorators import Handler, as_command
-from budget_app.models import AppError, Context
+from budget_app.models import (
+    AppError,
+    Context,
+    Query,
+    Transaction,
+    ValidationError,
+    normalize_category,
+    parse_amount,
+    parse_date,
+    parse_tags,
+    parse_type,
+)
+from budget_app.service.ledger import Ledger
+from budget_app.storage import DEFAULT_CATEGORIES, DataDir
 
 DEFAULT_DATA_DIR = "./data"
 DEFAULT_LIST_LIMIT = 20
@@ -132,6 +147,127 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# ── 공통 ──────────────────────────────────────────────────────────────────
+
+MAX_INPUT_ATTEMPTS = 3
+_TABLE_HEADERS = ("id", "날짜", "타입", "카테고리", "금액", "메모", "태그")
+_TABLE_ALIGNS = ("left", "left", "left", "left", "right", "left", "left")
+_MEMO_MAX_WIDTH = 24
+
+
+def _open_ledger(ctx: Context) -> Ledger:
+    data = DataDir(ctx.data_dir)
+    if data.ensure():
+        print(
+            "[안내] 데이터 디렉터리를 만들고 기본 카테고리를 등록했습니다: "
+            + ", ".join(DEFAULT_CATEGORIES),
+            file=sys.stderr,
+        )
+    return Ledger(data)
+
+
+def _report_warnings(ledger: Ledger) -> None:
+    for warning in ledger.warnings:
+        print(warning, file=sys.stderr)
+
+
+def _print_transactions(rows: list[Transaction]) -> None:
+    if not rows:
+        print("[안내] 조건에 맞는 거래가 없습니다.")
+        return
+    table = render_table(
+        _TABLE_HEADERS,
+        [
+            [
+                tx.id,
+                tx.date.isoformat(),
+                tx.type,
+                tx.category,
+                format_amount(tx.amount),
+                tx.memo,
+                ",".join(tx.tags),
+            ]
+            for tx in rows
+        ],
+        _TABLE_ALIGNS,
+        max_widths=[0, 0, 0, 0, 0, _MEMO_MAX_WIDTH, 0],
+    )
+    print(table)
+    print(f"\n총 {len(rows)}건")
+
+
+def _ask(label: str, parse, *, optional: bool = False):
+    """값 하나를 받는다. 형식이 틀리면 원인을 보여주고 다시 묻는다."""
+    for _ in range(MAX_INPUT_ATTEMPTS):
+        try:
+            raw = input(f"{label}: ")
+        except EOFError:
+            raise ValidationError(
+                "입력이 중단되었습니다.", "대화형 입력이 필요한 명령입니다."
+            ) from None
+        if optional and not raw.strip():
+            return parse("")
+        try:
+            return parse(raw)
+        except AppError as exc:
+            print(f"[오류] {exc.message}", file=sys.stderr)
+            if exc.hint:
+                print(f"[힌트] {exc.hint}", file=sys.stderr)
+    raise ValidationError(
+        f"{label} 입력을 {MAX_INPUT_ATTEMPTS}회 확인하지 못해 중단합니다.",
+        "값을 확인한 뒤 다시 실행하세요.",
+    )
+
+
+def _build_query(args: Namespace) -> Query:
+    return Query(
+        date_from=parse_date(args.date_from) if args.date_from else None,
+        date_to=parse_date(args.date_to) if args.date_to else None,
+        category=normalize_category(args.category) if args.category else None,
+        type=args.type,
+        keyword=args.keyword,
+        tag=args.tag,
+    )
+
+
+# ── 명령 ──────────────────────────────────────────────────────────────────
+
+
+@as_command
+def cmd_add(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    date = _ask("날짜(YYYY-MM-DD)", parse_date)
+    tx_type = _ask("타입(income/expense)", parse_type)
+    category = _ask("카테고리", ledger.require_category)
+    amount = _ask("금액(양수)", parse_amount)
+    memo = _ask("메모(선택)", lambda raw: raw.strip(), optional=True)
+    tags = _ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True)
+
+    tx = ledger.create(
+        date=date, type=tx_type, category=category, amount=amount, memo=memo, tags=tags
+    )
+    print(f"[저장 완료] id={tx.id}")
+    return 0
+
+
+@as_command
+def cmd_list(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    rows = ledger.search(Query(), args.limit)
+    _report_warnings(ledger)
+    _print_transactions(rows)
+    return 0
+
+
+@as_command
+def cmd_search(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    rows = ledger.search(_build_query(args), args.limit)
+    _report_warnings(ledger)
+    _print_transactions(rows)
+    return 0
+
+
 @as_command
 def _unimplemented(ctx: Context, args: Namespace) -> int:
     raise AppError(
@@ -140,7 +276,11 @@ def _unimplemented(ctx: Context, args: Namespace) -> int:
     )
 
 
-HANDLERS: dict[str, Handler] = {}
+HANDLERS: dict[str, Handler] = {
+    "add": cmd_add,
+    "list": cmd_list,
+    "search": cmd_search,
+}
 
 
 def dispatch(ctx: Context, args: Namespace) -> int:
