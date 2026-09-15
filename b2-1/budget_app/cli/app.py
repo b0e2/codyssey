@@ -6,7 +6,28 @@
 from __future__ import annotations
 
 import argparse
+import sys
+from argparse import Namespace
 from pathlib import Path
+
+from budget_app.cli.render import format_amount, render_lines, render_table
+from budget_app.decorators import Handler, as_command
+from budget_app.models import (
+    AppError,
+    Context,
+    Query,
+    Transaction,
+    ValidationError,
+    normalize_category,
+    parse_amount,
+    parse_date,
+    parse_tags,
+    parse_type,
+)
+from budget_app.service.ledger import Ledger, open_ledger
+from budget_app.service.porting import Porting
+from budget_app.service.recurring import Recurring
+from budget_app.service.reports import Reports
 
 DEFAULT_DATA_DIR = "./data"
 DEFAULT_LIST_LIMIT = 20
@@ -74,6 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     p_budget = sub.add_parser("budget", parents=[common], help="예산 설정·조회")
+    p_budget.set_defaults(group_parser=p_budget)
     budget_sub = p_budget.add_subparsers(dest="action", metavar="<action>")
     p_budget_set = budget_sub.add_parser("set", parents=[common], help="월 예산 저장")
     p_budget_set.add_argument("--month", required=True, metavar="YYYY-MM")
@@ -81,6 +103,7 @@ def build_parser() -> argparse.ArgumentParser:
     budget_sub.add_parser("list", parents=[common], help="예산 목록")
 
     p_category = sub.add_parser("category", parents=[common], help="카테고리 관리")
+    p_category.set_defaults(group_parser=p_category)
     category_sub = p_category.add_subparsers(dest="action", metavar="<action>")
     category_sub.add_parser("add", parents=[common], help="카테고리 추가 (대화형)")
     category_sub.add_parser("list", parents=[common], help="카테고리 목록")
@@ -114,6 +137,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("backup", parents=[common], help="데이터 파일 백업")
 
     p_recurring = sub.add_parser("recurring", parents=[common], help="반복 내역 관리")
+    p_recurring.set_defaults(group_parser=p_recurring)
     recurring_sub = p_recurring.add_subparsers(dest="action", metavar="<action>")
     recurring_sub.add_parser("add", parents=[common], help="반복 규칙 추가 (대화형)")
     recurring_sub.add_parser("list", parents=[common], help="반복 규칙 목록")
@@ -125,6 +149,388 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# ── 공통 ──────────────────────────────────────────────────────────────────
+
+MAX_INPUT_ATTEMPTS = 3
+_TABLE_HEADERS = ("id", "날짜", "타입", "카테고리", "금액", "메모", "태그")
+_TABLE_ALIGNS = ("left", "left", "left", "left", "right", "left", "left")
+_MEMO_MAX_WIDTH = 24
+
+
+def _open_ledger(ctx: Context) -> Ledger:
+    ledger, seeded = open_ledger(ctx.data_dir)
+    if seeded:
+        print(
+            "[안내] 데이터 디렉터리를 만들고 기본 카테고리를 등록했습니다: "
+            + ", ".join(seeded),
+            file=sys.stderr,
+        )
+    return ledger
+
+
+def _report_warnings(ledger: Ledger) -> None:
+    for warning in ledger.warnings:
+        print(warning, file=sys.stderr)
+
+
+def _print_transactions(rows: list[Transaction]) -> None:
+    if not rows:
+        print("[안내] 조건에 맞는 거래가 없습니다.")
+        return
+    table = render_table(
+        _TABLE_HEADERS,
+        [
+            [
+                tx.id,
+                tx.date.isoformat(),
+                tx.type,
+                tx.category,
+                format_amount(tx.amount),
+                tx.memo,
+                ",".join(tx.tags),
+            ]
+            for tx in rows
+        ],
+        _TABLE_ALIGNS,
+        max_widths=[0, 0, 0, 0, 0, _MEMO_MAX_WIDTH, 0],
+    )
+    print(table)
+    print(f"\n총 {len(rows)}건")
+
+
+def _ask(label: str, parse, *, optional: bool = False):
+    """값 하나를 받는다. 형식이 틀리면 원인을 보여주고 다시 묻는다."""
+    for _ in range(MAX_INPUT_ATTEMPTS):
+        try:
+            raw = input(f"{label}: ")
+        except EOFError:
+            raise ValidationError(
+                "입력이 중단되었습니다.", "대화형 입력이 필요한 명령입니다."
+            ) from None
+        if optional and not raw.strip():
+            return parse("")
+        try:
+            return parse(raw)
+        except AppError as exc:
+            print(f"[오류] {exc.message}", file=sys.stderr)
+            if exc.hint:
+                print(f"[힌트] {exc.hint}", file=sys.stderr)
+    raise ValidationError(
+        f"{label} 입력을 {MAX_INPUT_ATTEMPTS}회 확인하지 못해 중단합니다.",
+        "값을 확인한 뒤 다시 실행하세요.",
+    )
+
+
+def _build_query(args: Namespace) -> Query:
+    return Query(
+        date_from=parse_date(args.date_from) if args.date_from else None,
+        date_to=parse_date(args.date_to) if args.date_to else None,
+        category=normalize_category(args.category) if args.category else None,
+        type=args.type,
+        keyword=args.keyword,
+        tag=args.tag,
+    )
+
+
+# ── 명령 ──────────────────────────────────────────────────────────────────
+
+
+@as_command
+def cmd_add(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    date = _ask("날짜(YYYY-MM-DD)", parse_date)
+    tx_type = _ask("타입(income/expense)", parse_type)
+    category = _ask("카테고리", ledger.require_category)
+    amount = _ask("금액(양수)", parse_amount)
+    memo = _ask("메모(선택)", lambda raw: raw.strip(), optional=True)
+    tags = _ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True)
+
+    tx = ledger.create(
+        date=date, type=tx_type, category=category, amount=amount, memo=memo, tags=tags
+    )
+    print(f"[저장 완료] id={tx.id}")
+    return 0
+
+
+@as_command
+def cmd_list(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    rows = ledger.search(Query(), args.limit)
+    _report_warnings(ledger)
+    _print_transactions(rows)
+    return 0
+
+
+@as_command
+def cmd_search(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    rows = ledger.search(_build_query(args), args.limit)
+    _report_warnings(ledger)
+    _print_transactions(rows)
+    return 0
+
+
+@as_command
+def cmd_update(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    changes: dict[str, object] = {}
+    # 옵션을 아예 주지 않은 것과 빈 문자열로 지운 것을 구분해야 하므로 None 으로만 거른다.
+    if args.date is not None:
+        changes["date"] = parse_date(args.date)
+    if args.type is not None:
+        changes["type"] = parse_type(args.type)
+    if args.category is not None:
+        changes["category"] = args.category
+    if args.amount is not None:
+        changes["amount"] = parse_amount(args.amount)
+    if args.memo is not None:
+        changes["memo"] = args.memo.strip()
+    if args.tags is not None:
+        changes["tags"] = parse_tags(args.tags)
+
+    tx = ledger.update(args.tx_id, changes)
+    print(f"[수정 완료] id={tx.id}")
+    _print_transactions([tx])
+    return 0
+
+
+@as_command
+def cmd_delete(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    tx = ledger.delete(args.tx_id)
+    print(f"[삭제 완료] id={tx.id} {tx.date.isoformat()} {tx.category} {format_amount(tx.amount)}")
+    return 0
+
+
+@as_command
+def cmd_category(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+
+    if args.action == "list":
+        categories = ledger.categories()
+        _report_warnings(ledger)
+        if not categories:
+            print("[안내] 등록된 카테고리가 없습니다.")
+            return 0
+        print(render_lines(categories))
+        return 0
+
+    if args.action == "add":
+        name = _ask("카테고리명", ledger.add_category)
+        print(f"[저장 완료] category={name}")
+        return 0
+
+    moved = ledger.remove_category(args.name, args.replace_with)
+    if moved:
+        print(f"[삭제 완료] category={args.name} (거래 {moved}건을 {args.replace_with} 로 옮김)")
+    else:
+        print(f"[삭제 완료] category={args.name}")
+    return 0
+
+
+@as_command
+def cmd_budget(ctx: Context, args: Namespace) -> int:
+    reports = Reports(_open_ledger(ctx))
+
+    if args.action == "set":
+        budget = reports.set_budget(args.month, args.amount)
+        print(f"[저장 완료] {budget.month} 예산 {format_amount(budget.amount)}원")
+        return 0
+
+    budgets = reports.budgets()
+    _report_warnings(reports.ledger)
+    if not budgets:
+        print("[안내] 설정된 예산이 없습니다.")
+        return 0
+    print(
+        render_table(
+            ("월", "예산"),
+            [[b.month, format_amount(b.amount)] for b in budgets],
+            ("left", "right"),
+        )
+    )
+    return 0
+
+
+@as_command
+def cmd_summary(ctx: Context, args: Namespace) -> int:
+    if args.top <= 0:
+        # 데이터 유무와 관계없이 같은 입력은 같게 판정해야 한다.
+        raise ValidationError("--top 은 1 이상이어야 합니다.", f"입력값: {args.top}")
+
+    ledger = _open_ledger(ctx)
+    summary = Reports(ledger).summarize(args.month)
+    _report_warnings(ledger)
+
+    if summary.is_empty:
+        # 유효한 달을 정상 조회했고 거래가 없을 뿐이므로 오류가 아니다.
+        print(f"[안내] {summary.month} 데이터가 없습니다.")
+        return 0
+
+    print(f"총 수입: {format_amount(summary.total_income)}원")
+    print(f"총 지출: {format_amount(summary.total_expense)}원")
+    print(f"잔액: {format_amount(summary.balance)}원")
+
+    if summary.budget is None:
+        print("예산: 미설정")
+    else:
+        print(
+            f"예산: {format_amount(summary.budget)}원 "
+            f"(사용률 {summary.usage_rate:.1f}%)"
+        )
+        if summary.is_over_budget:
+            over = summary.total_expense - summary.budget
+            print(f"[경고] 예산을 {format_amount(over)}원 초과했습니다.")
+
+    top = summary.top_expenses(args.top)
+    if top:
+        print(f"\n지출 TOP {len(top)}")
+        for rank, (category, amount) in enumerate(top, start=1):
+            print(f"{rank}) {category} {format_amount(amount)}원")
+    return 0
+
+
+@as_command
+def cmd_export(ctx: Context, args: Namespace) -> int:
+    if args.month and (args.date_from or args.date_to):
+        raise ValidationError(
+            "--month 와 --from/--to 는 함께 쓸 수 없습니다.",
+            "둘 중 하나만 지정하세요.",
+        )
+    if not args.month and not (args.date_from and args.date_to):
+        # 한쪽만 주면 열린 구간이 되어 의도보다 훨씬 많은 데이터가 나간다.
+        raise ValidationError(
+            "기간 조건이 필요합니다.",
+            "--month YYYY-MM 또는 --from YYYY-MM-DD --to YYYY-MM-DD 를 지정하세요.",
+        )
+
+    ledger = _open_ledger(ctx)
+    query = (
+        Query.for_month(args.month)
+        if args.month
+        else Query(
+            date_from=parse_date(args.date_from) if args.date_from else None,
+            date_to=parse_date(args.date_to) if args.date_to else None,
+        )
+    )
+    count = Porting(ledger).export(query, args.out)
+    _report_warnings(ledger)
+    print(f"[완료] {args.out} ({count} records)")
+    return 0
+
+
+@as_command
+def cmd_import(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    result = Porting(ledger).import_csv(args.src)
+    detail = f" (상세: {result.errors_path})" if result.errors_path else ""
+    print(f"[완료] imported={result.imported}, skipped={result.skipped}{detail}")
+    return 0
+
+
+@as_command
+def cmd_backup(ctx: Context, args: Namespace) -> int:
+    dest = Porting(_open_ledger(ctx)).backup()
+    print(f"[백업 완료] {dest}")
+    return 0
+
+
+@as_command
+def cmd_recurring(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    recurring = Recurring(ledger)
+
+    if args.action == "list":
+        rules = recurring.rules()
+        _report_warnings(ledger)
+        for warning in recurring.warnings:
+            print(warning, file=sys.stderr)
+        if not rules:
+            print("[안내] 등록된 반복 규칙이 없습니다.")
+            return 0
+        print(
+            render_table(
+                ("id", "이름", "일자", "타입", "카테고리", "금액"),
+                [
+                    [r.id, r.name, str(r.day), r.type, r.category, format_amount(r.amount)]
+                    for r in rules
+                ],
+                ("left", "left", "right", "left", "left", "right"),
+            )
+        )
+        return 0
+
+    if args.action == "add":
+        name = _ask("규칙 이름", lambda raw: raw.strip() or _blank("규칙 이름"))
+        day = _ask("일자(1-31)", _parse_day)
+        tx_type = _ask("타입(income/expense)", parse_type)
+        category = _ask("카테고리", ledger.require_category)
+        amount = _ask("금액(양수)", parse_amount)
+        memo = _ask("메모(선택)", lambda raw: raw.strip(), optional=True)
+        tags = _ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True)
+        rule = recurring.create(
+            name=name, day=day, type=tx_type, category=category,
+            amount=amount, memo=memo, tags=tags,
+        )
+        print(f"[저장 완료] id={rule.id} {rule.name} 매월 {rule.day}일")
+        return 0
+
+    if args.action == "remove":
+        rule = recurring.remove(args.rule_id)
+        print(f"[삭제 완료] id={rule.id} {rule.name}")
+        return 0
+
+    created = recurring.apply(args.month)
+    _report_warnings(ledger)
+    for warning in recurring.warnings:
+        print(warning, file=sys.stderr)
+    if not created:
+        print(f"[안내] {args.month} 에 새로 생성할 반복 내역이 없습니다.")
+        return 0
+    print(f"[완료] {args.month} 반복 내역 {len(created)}건 생성")
+    _print_transactions(created)
+    return 0
+
+
+def _blank(label: str):
+    raise ValidationError(f"{label}은(는) 비어 있을 수 없습니다.", "값을 입력하세요.")
+
+
+def _parse_day(raw: str) -> int:
+    text = raw.strip()
+    if not text.isdigit() or not 1 <= int(text) <= 31:
+        raise ValidationError("일자는 1~31 사이의 정수여야 합니다.", "예: 25")
+    return int(text)
+
+
+@as_command
+def _unimplemented(ctx: Context, args: Namespace) -> int:
+    raise AppError(
+        f"'{args.command}' 명령은 아직 구현되지 않았습니다.",
+        "python -m budget_app --help 로 사용 가능한 명령을 확인하세요.",
+    )
+
+
+HANDLERS: dict[str, Handler] = {
+    "add": cmd_add,
+    "list": cmd_list,
+    "search": cmd_search,
+    "update": cmd_update,
+    "delete": cmd_delete,
+    "category": cmd_category,
+    "budget": cmd_budget,
+    "summary": cmd_summary,
+    "export": cmd_export,
+    "import": cmd_import,
+    "backup": cmd_backup,
+    "recurring": cmd_recurring,
+}
+
+
+def dispatch(ctx: Context, args: Namespace) -> int:
+    return HANDLERS.get(args.command, _unimplemented)(ctx, args)
+
+
 def main(argv: list[str]) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -133,6 +539,10 @@ def main(argv: list[str]) -> int:
         parser.print_help()
         return 2
 
-    print(f"[오류] '{args.command}' 명령은 아직 구현되지 않았습니다.")
-    print("[힌트] python -m budget_app --help 로 사용 가능한 명령을 확인하세요.")
-    return 1
+    group_parser = getattr(args, "group_parser", None)
+    if group_parser is not None and getattr(args, "action", None) is None:
+        group_parser.print_help()
+        return 2
+
+    ctx = Context(data_dir=args.data_dir, verbose=args.verbose)
+    return dispatch(ctx, args)
