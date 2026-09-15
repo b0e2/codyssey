@@ -54,7 +54,7 @@ class Ledger:
 
     # ── 읽기 ────────────────────────────────────────────────────────────
 
-    def _transactions(self) -> Iterator[Transaction]:
+    def stream_transactions(self) -> Iterator[Transaction]:
         """정상 행만 흘린다. 손상 행과 규칙에 어긋난 행은 건너뛰고 경고로 모은다."""
         corrupt: list[int] = []
         rows = self.data.transactions.stream(corrupt)
@@ -77,12 +77,12 @@ class Ledger:
         """
         if limit <= 0:
             raise ValidationError("--limit 은 1 이상이어야 합니다.", f"입력값: {limit}")
-        hits = (tx for tx in self._transactions() if query.matches(tx))
+        hits = (tx for tx in self.stream_transactions() if query.matches(tx))
         return heapq.nlargest(limit, hits, key=lambda tx: (tx.date, tx.seq))
 
     def get(self, tx_id: str) -> Transaction:
         wanted = parse_tx_id(tx_id)
-        for tx in self._transactions():
+        for tx in self.stream_transactions():
             if tx.id == wanted:
                 return tx
         raise NotFoundError(
@@ -211,7 +211,7 @@ class Ledger:
         return category
 
     def count_by_category(self, name: str) -> int:
-        return sum(1 for tx in self._transactions() if tx.category == name)
+        return sum(1 for tx in self.stream_transactions() if tx.category == name)
 
     def remove_category(self, name: str, replace_with: str | None = None) -> int:
         """카테고리를 지운다. 사용 중이면 대체 카테고리로 옮긴 뒤 지운다.
