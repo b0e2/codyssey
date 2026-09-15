@@ -25,6 +25,7 @@ from budget_app.models import (
     parse_type,
 )
 from budget_app.service.ledger import Ledger
+from budget_app.service.reports import Reports
 from budget_app.storage import DEFAULT_CATEGORIES, DataDir
 
 DEFAULT_DATA_DIR = "./data"
@@ -326,6 +327,63 @@ def cmd_category(ctx: Context, args: Namespace) -> int:
 
 
 @as_command
+def cmd_budget(ctx: Context, args: Namespace) -> int:
+    reports = Reports(_open_ledger(ctx))
+
+    if args.action == "set":
+        budget = reports.set_budget(args.month, args.amount)
+        print(f"[저장 완료] {budget.month} 예산 {format_amount(budget.amount)}원")
+        return 0
+
+    budgets = reports.budgets()
+    if not budgets:
+        print("[안내] 설정된 예산이 없습니다.")
+        return 0
+    print(
+        render_table(
+            ("월", "예산"),
+            [[b.month, format_amount(b.amount)] for b in budgets],
+            ("left", "right"),
+        )
+    )
+    return 0
+
+
+@as_command
+def cmd_summary(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    summary = Reports(ledger).summarize(args.month)
+    _report_warnings(ledger)
+
+    if summary.is_empty:
+        # 유효한 달을 정상 조회했고 거래가 없을 뿐이므로 오류가 아니다.
+        print(f"[안내] {summary.month} 데이터가 없습니다.")
+        return 0
+
+    print(f"총 수입: {format_amount(summary.total_income)}원")
+    print(f"총 지출: {format_amount(summary.total_expense)}원")
+    print(f"잔액: {format_amount(summary.balance)}원")
+
+    if summary.budget is None:
+        print("예산: 미설정")
+    else:
+        print(
+            f"예산: {format_amount(summary.budget)}원 "
+            f"(사용률 {summary.usage_rate:.1f}%)"
+        )
+        if summary.is_over_budget:
+            over = summary.total_expense - summary.budget
+            print(f"[경고] 예산을 {format_amount(over)}원 초과했습니다.")
+
+    top = summary.top_expenses(args.top)
+    if top:
+        print(f"\n지출 TOP {len(top)}")
+        for rank, (category, amount) in enumerate(top, start=1):
+            print(f"{rank}) {category} {format_amount(amount)}원")
+    return 0
+
+
+@as_command
 def _unimplemented(ctx: Context, args: Namespace) -> int:
     raise AppError(
         f"'{args.command}' 명령은 아직 구현되지 않았습니다.",
@@ -340,6 +398,8 @@ HANDLERS: dict[str, Handler] = {
     "update": cmd_update,
     "delete": cmd_delete,
     "category": cmd_category,
+    "budget": cmd_budget,
+    "summary": cmd_summary,
 }
 
 
