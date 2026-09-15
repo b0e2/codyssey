@@ -67,17 +67,22 @@ class Porting:
         return len(rows)
 
     def _write_csv(self, out: Path, rows: list[Transaction]) -> None:
+        # 쓰기·flush·fsync·교체까지 모두 감싼다. 마지막 교체만 밖에 두면
+        # 그 단계의 실패가 예상치 못한 오류로 새어 나간다.
         with io_guard(out, "저장"):
             out.parent.mkdir(parents=True, exist_ok=True)
             tmp = tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            newline="",
-            dir=out.parent,
-            prefix=f".{out.name}.",
-            suffix=".tmp",
-            delete=False,
-        )
+                mode="w",
+                encoding="utf-8",
+                newline="",
+                dir=out.parent,
+                prefix=f".{out.name}.",
+                suffix=".tmp",
+                delete=False,
+            )
+            self._fill_csv(tmp, out, rows)
+
+    def _fill_csv(self, tmp, out: Path, rows: list[Transaction]) -> None:
         try:
             with tmp:
                 writer = csv.DictWriter(tmp, fieldnames=list(CSV_COLUMNS))
@@ -140,7 +145,7 @@ class Porting:
 
         if prepared:
             store = self.data.transactions
-            store.write_all(self._chain(store.stream_strict(), prepared))
+            store.write_all(self._chain(self.ledger.strict_rows(), prepared))
         result.imported = len(prepared)
         return result
 

@@ -258,3 +258,51 @@ class ExportPeriodTest(SafetyTestCase):
                          "--out", str(self.root / "o.csv"), "--from", "2024-01-01"])
         self.assertEqual(code, 2)
         self.assertFalse((self.root / "o.csv").exists())
+
+
+class AppendPathStrictnessTest(SafetyTestCase):
+    """덧붙이는 명령도 파일 전체를 다시 쓰므로 기존 행을 그대로 복사하면 안 된다."""
+
+    def _store_with_semantic_corruption(self) -> str:
+        self.data.transactions.path.write_text(
+            '{"id": "TX-000001", "type": "expense", "date": "2024-01-15",'
+            ' "amount": 0, "category": "food"}\n',
+            encoding="utf-8",
+        )
+        return self.data.transactions.path.read_text(encoding="utf-8")
+
+    def test_import_aborts(self) -> None:
+        before = self._store_with_semantic_corruption()
+        src = self.root / "in.csv"
+        src.write_text(
+            "date,type,category,amount,memo,tags\n2024-02-01,expense,food,1000,,\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(StorageError):
+            Porting(self.ledger()).import_csv(src)
+        self.assertEqual(self.data.transactions.path.read_text(encoding="utf-8"), before)
+
+    def test_recurring_apply_aborts(self) -> None:
+        Recurring(self.ledger()).create(
+            name="월세", day=25, type="expense", category="rent", amount=1000
+        )
+        before = self._store_with_semantic_corruption()
+        with self.assertRaises(StorageError):
+            Recurring(self.ledger()).apply("2024-03")
+        self.assertEqual(self.data.transactions.path.read_text(encoding="utf-8"), before)
+
+
+class ExportWriteFailureTest(SafetyTestCase):
+    def test_replace_failure_is_a_storage_error(self) -> None:
+        # 교체 단계만 가드 밖에 두면 그 실패가 내부 오류로 새어 나간다.
+        out = self.root / "out.csv"
+        with patch("budget_app.service.porting.os.replace", side_effect=OSError(13, "denied")):
+            with self.assertRaises(StorageError):
+                Porting(self.ledger()).export(Query.for_month("2024-01"), out)
+
+    def test_no_temp_file_is_left_behind(self) -> None:
+        out = self.root / "out.csv"
+        with patch("budget_app.service.porting.os.replace", side_effect=OSError(13, "denied")):
+            with self.assertRaises(StorageError):
+                Porting(self.ledger()).export(Query.for_month("2024-01"), out)
+        self.assertEqual([p for p in self.root.iterdir() if p.name.endswith(".tmp")], [])
