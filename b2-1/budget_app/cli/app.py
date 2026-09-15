@@ -25,6 +25,7 @@ from budget_app.models import (
     parse_type,
 )
 from budget_app.service.ledger import Ledger
+from budget_app.service.porting import Porting
 from budget_app.service.reports import Reports
 from budget_app.storage import DEFAULT_CATEGORIES, DataDir
 
@@ -384,6 +385,43 @@ def cmd_summary(ctx: Context, args: Namespace) -> int:
 
 
 @as_command
+def cmd_export(ctx: Context, args: Namespace) -> int:
+    if not args.month and not (args.date_from or args.date_to):
+        raise ValidationError(
+            "기간 조건이 필요합니다.",
+            "--month YYYY-MM 또는 --from YYYY-MM-DD --to YYYY-MM-DD 를 지정하세요.",
+        )
+    if args.month and (args.date_from or args.date_to):
+        raise ValidationError(
+            "--month 와 --from/--to 는 함께 쓸 수 없습니다.",
+            "둘 중 하나만 지정하세요.",
+        )
+
+    ledger = _open_ledger(ctx)
+    query = (
+        Query.for_month(args.month)
+        if args.month
+        else Query(
+            date_from=parse_date(args.date_from) if args.date_from else None,
+            date_to=parse_date(args.date_to) if args.date_to else None,
+        )
+    )
+    count = Porting(ledger).export(query, args.out)
+    _report_warnings(ledger)
+    print(f"[완료] {args.out} ({count} records)")
+    return 0
+
+
+@as_command
+def cmd_import(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    result = Porting(ledger).import_csv(args.src)
+    detail = f" (상세: {result.errors_path})" if result.errors_path else ""
+    print(f"[완료] imported={result.imported}, skipped={result.skipped}{detail}")
+    return 0
+
+
+@as_command
 def _unimplemented(ctx: Context, args: Namespace) -> int:
     raise AppError(
         f"'{args.command}' 명령은 아직 구현되지 않았습니다.",
@@ -400,6 +438,8 @@ HANDLERS: dict[str, Handler] = {
     "category": cmd_category,
     "budget": cmd_budget,
     "summary": cmd_summary,
+    "export": cmd_export,
+    "import": cmd_import,
 }
 
 
