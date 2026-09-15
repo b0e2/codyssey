@@ -1,0 +1,281 @@
+/* 앱 전체 뼈대: 사이드바, 헤더, 본문 영역. */
+
+/* ── 앱 셸 ──────────────────────────────────────────── */
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-width);
+  background: var(--color-sidebar);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.app-body {
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+}
+
+.app-scrim {
+  display: none;
+}
+
+/* ── 사이드바 ───────────────────────────────────────── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: var(--space-6) var(--space-4);
+}
+
+.sidebar__brand {
+  display: block;
+  padding: 0 var(--space-3) var(--space-8);
+}
+
+.sidebar__brand-mark {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-text);
+}
+
+.sidebar__brand-mark svg {
+  width: 22px;
+  height: 22px;
+  color: var(--color-primary);
+}
+
+.sidebar__brand-sub {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+}
+
+.sidebar__nav {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  transition: background var(--transition), color var(--transition);
+}
+
+.sidebar__link:hover {
+  background: rgb(74 90 60 / 6%);
+  color: var(--color-text);
+}
+
+.sidebar__link--active {
+  background: var(--color-primary-soft);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.sidebar__foot {
+  margin-top: auto;
+  padding: var(--space-8) var(--space-3) 0;
+  color: var(--color-text-muted);
+}
+
+.sidebar__foot > svg {
+  color: var(--color-primary);
+  opacity: 0.75;
+}
+
+.sidebar__quote {
+  margin-top: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.sidebar__note {
+  margin-top: var(--space-4);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+/* ── 헤더 ───────────────────────────────────────────── */
+.app-header {
+  position: sticky;
+  top: 0;
+  /* 3단 그리드로 둔다. flex 로 늘리면 양옆 요소의 너비에 따라
+     검색창 위치가 흔들려 본문 가운데와 맞지 않는다. */
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 620px) 1fr;
+  align-items: center;
+  gap: var(--space-4);
+  height: var(--header-height);
+  padding: 0 var(--space-8);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 10;
+}
+
+.app-header__menu {
+  grid-column: 1;
+  justify-self: start;
+  display: none;
+  align-items: center;
+  border: 0;
+  background: none;
+  padding: var(--space-2);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.app-header__search {
+  grid-column: 2;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  height: 42px;
+  background: var(--color-surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  transition: border-color var(--transition);
+}
+
+.app-header__search:focus-within {
+  border-color: var(--color-primary);
+}
+
+.app-header__search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--color-text);
+  outline: none;
+}
+
+.app-header__search input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.app-header__user {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-size: 0.925rem;
+  font-weight: 500;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+/* ── 헤더 사용자 버튼 ───────────────────────────────── */
+button.app-header__user {
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+
+button.app-header__user:hover {
+  background: rgb(74 90 60 / 8%);
+}
+
+/* ── 본문 ───────────────────────────────────────────── */
+.app-main {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-8);
+}
+
+.app-main--narrow {
+  max-width: 420px;
+}
+
+/* ── 좁은 화면 ──────────────────────────────────────── */
+@media (max-width: 900px) {
+  .app-sidebar {
+    transform: translateX(-100%);
+    transition: transform var(--transition);
+  }
+
+  .app-sidebar--open {
+    transform: translateX(0);
+    box-shadow: 0 0 32px rgb(31 36 32 / 18%);
+  }
+
+  .app-body {
+    margin-left: 0;
+  }
+
+  .app-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: 0;
+    background: rgb(31 36 32 / 32%);
+    z-index: 15;
+  }
+
+  .app-header {
+    padding: 0 var(--space-4);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .app-header__menu {
+    display: inline-flex;
+  }
+
+  .app-header__user-name {
+    display: none;
+  }
+
+  .app-main {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .hero {
+    padding: var(--space-6);
+    min-height: 0;
+  }
+
+  .hero__ornament {
+    display: none;
+  }
+
+  .hero__title {
+    font-size: 1.75rem;
+  }
+}

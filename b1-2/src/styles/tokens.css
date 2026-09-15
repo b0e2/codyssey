@@ -1,0 +1,62 @@
+/* 색·간격·반경. 테마 전환은 여기 값만 바꾼다. */
+
+/* ── 토큰 ───────────────────────────────────────────── */
+:root {
+  /* 확정 디자인: 크림 베이지 배경 + 딥 올리브 포인트 */
+  --color-bg: #f4f2ea;
+  --color-sidebar: #efede3;
+  --color-surface: #ffffff;
+  --color-border: #e4e1d5;
+  --color-text: #1f2420;
+  --color-text-muted: #798074;
+
+  --color-primary: #4a5a3c;
+  --color-primary-hover: #3b4a2f;
+  --color-primary-soft: #e5ebdd;
+  --color-danger: #c0392b;
+  --color-danger-soft: #fbecea;
+  --color-success: #3f6b47;
+
+  /* 히어로 배경. 토큰으로 두지 않으면 테마를 따라가지 않아
+     글자만 밝아지고 배경은 그대로여서 읽을 수 없게 된다. */
+  --hero-from: #f0ede1;
+  --hero-to: #e5e6d6;
+  --hero-glow: #eae7d6;
+  --hero-ornament: 0.18;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --shadow: 0 1px 2px rgb(31 36 32 / 6%);
+  --shadow-card: 0 2px 10px rgb(31 36 32 / 5%);
+  --transition: 140ms ease;
+
+  --sidebar-width: 232px;
+  --header-height: 72px;
+  --content-max: 1180px;
+}
+
+/* 다크 토큰. 화면 설정 태스크에서 data-theme 으로 켠다. */
+:root[data-theme='dark'] {
+  --color-bg: #1b1e1a;
+  --color-sidebar: #202420;
+  --color-surface: #262b25;
+  --color-border: #363b34;
+  --color-text: #eef0ea;
+  --color-text-muted: #9aa294;
+  --color-primary: #9db98a;
+  --color-primary-hover: #b0c99f;
+  --color-primary-soft: #2f3a29;
+  --color-danger: #e8837a;
+  --color-danger-soft: #3a2724;
+
+}

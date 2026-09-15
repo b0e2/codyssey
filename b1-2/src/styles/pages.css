@@ -1,0 +1,480 @@
+/* 한 화면에서만 쓰는 스타일. */
+
+/* ── 히어로 ─────────────────────────────────────────── */
+.hero {
+  /* 히어로는 디자인상 사진 자리라 두 테마에서 같은 크림 배경을 쓴다.
+     배경이 안 바뀌므로 그 위의 글자와 버튼도 밝은 테마 값으로 고정한다.
+     이 블록 안에서만 토큰을 덮어써서 자식 전체에 적용한다. */
+  --color-text: #1f2420;
+  --color-text-muted: #6b7266;
+  --color-surface: #ffffff;
+  --color-border: #ddd9cb;
+  /* 토큰만 덮으면 소용이 없다. color 를 선언하지 않은 자식은
+     body 에서 이미 계산된 색을 그대로 물려받는다. 여기서 한 번 선언해야
+     자식들이 이 색을 상속한다. */
+  color: var(--color-text);
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 300px;
+  padding: var(--space-10);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 150% at 88% 12%, var(--hero-glow) 0%, transparent 62%),
+    linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%);
+}
+
+.hero__body {
+  position: relative;
+  z-index: 1;
+  max-width: 34rem;
+}
+
+/* 디자인의 사진 자리. 원본 자산이 없어 잎사귀 모티프로 대체한다. */
+.hero__ornament {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  padding-right: var(--space-8);
+  color: var(--color-primary);
+  opacity: var(--hero-ornament);
+  pointer-events: none;
+}
+
+.hero__ornament svg:last-child {
+  align-self: flex-end;
+  margin-bottom: var(--space-10);
+  transform: rotate(24deg);
+}
+
+.hero__eyebrow {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hero__title {
+  margin-top: var(--space-4);
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.hero__description {
+  margin-top: var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+/* ── 태그 화면 ──────────────────────────────────────── */
+.tags__search {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-3) var(--space-4);
+}
+
+.tags__hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-8);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 0.875rem;
+}
+
+.tags__count {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: rgb(121 128 116 / 12%);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.tag-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  height: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--transition);
+}
+
+.tag-card:hover {
+  border-color: var(--color-primary);
+}
+
+.tag-card__name {
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.tag-card__count {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.tag-card__titles {
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.tag-card__titles li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .tag-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tag-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .tag-card .button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* ── 통계 ───────────────────────────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.stat-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-card);
+}
+
+.stat-card__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  background: rgb(121 128 116 / 10%);
+  color: var(--color-text-muted);
+}
+
+.stat-card--accent .stat-card__icon {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.stat-card__label {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.stat-card__value {
+  margin-top: var(--space-1);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.stat-card__unit {
+  margin-left: 2px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.stat-card__description {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* ── 막대 그래프 ────────────────────────────────────── */
+.chart {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  align-items: end;
+  gap: var(--space-2);
+  height: 220px;
+  padding-top: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.chart__col {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-items: end;
+  justify-items: center;
+  gap: var(--space-1);
+  height: 100%;
+}
+
+.chart__value {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.chart__bar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: var(--color-primary);
+  opacity: 0.55;
+  align-self: end;
+}
+
+.chart__label {
+  padding-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* ── 순위 ───────────────────────────────────────────── */
+.rank-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rank-list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.rank-list__index {
+  width: 1.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.rank-list__count {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 900px) {
+  .stat-grid,
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .chart {
+    height: 180px;
+  }
+
+  .chart__value {
+    display: none;
+  }
+}
+
+/* ── 로그인 ─────────────────────────────────────────── */
+.auth {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--space-6);
+  background: var(--color-bg);
+}
+
+.auth__card {
+  width: min(400px, 100%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-card);
+}
+
+.auth__brand {
+  margin-bottom: var(--space-6);
+}
+
+.auth__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.auth__logo svg {
+  color: var(--color-primary);
+}
+
+.auth__sub {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.auth__title {
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.auth__description {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 0.925rem;
+}
+
+.auth__notice {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 0.875rem;
+}
+
+.auth__form {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.auth__switch {
+  margin-top: var(--space-5);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.auth__switch .link {
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ── 테마 선택 ──────────────────────────────────────── */
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.theme-option {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.theme-option:hover {
+  border-color: var(--color-primary);
+}
+
+.theme-option--on {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.theme-option input {
+  margin: 0 auto;
+  accent-color: var(--color-primary);
+}
+
+.theme-option__label {
+  font-weight: 600;
+}
+
+.theme-option__description {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+/* ── 계정 ───────────────────────────────────────────── */
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.account-row__name {
+  font-weight: 600;
+}
+
+.account-row__email {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.account-row .button {
+  margin-left: auto;
+}
+
+@media (max-width: 900px) {
+  .theme-options {
+    grid-template-columns: 1fr;
+  }
+}
