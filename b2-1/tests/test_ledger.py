@@ -145,3 +145,128 @@ class GetTest(LedgerTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UpdateTest(LedgerTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.add("2024-01-10", 1000, memo="커피", tags=["cafe"])
+        self.add("2024-01-11", 2000)
+
+    def test_single_field(self) -> None:
+        tx = self.ledger().update("TX-000001", {"amount": 5000})
+        self.assertEqual(tx.amount, 5000)
+        self.assertEqual(self.ledger().get("TX-000001").memo, "커피")
+
+    def test_empty_string_clears_memo_and_tags(self) -> None:
+        self.ledger().update("TX-000001", {"memo": "", "tags": []})
+        tx = self.ledger().get("TX-000001")
+        self.assertEqual(tx.memo, "")
+        self.assertEqual(tx.tags, [])
+
+    def test_other_rows_are_untouched(self) -> None:
+        self.ledger().update("TX-000001", {"amount": 5000})
+        self.assertEqual(self.ledger().get("TX-000002").amount, 2000)
+        self.assertEqual(len(self.ledger().search(Query(), 10)), 2)
+
+    def test_missing_id(self) -> None:
+        with self.assertRaises(NotFoundError):
+            self.ledger().update("TX-000999", {"amount": 1})
+
+    def test_empty_change_set(self) -> None:
+        with self.assertRaises(ValidationError):
+            self.ledger().update("TX-000001", {})
+
+    def test_unknown_category(self) -> None:
+        with self.assertRaises(NotFoundError):
+            self.ledger().update("TX-000001", {"category": "nope"})
+
+    def test_invalid_value_is_rejected_by_the_model(self) -> None:
+        with self.assertRaises(ValidationError):
+            self.ledger().update("TX-000001", {"amount": 0})
+
+    def test_corrupt_file_aborts_and_preserves_original(self) -> None:
+        path = self.data.transactions.path
+        with path.open("a", encoding="utf-8") as fp:
+            fp.write("broken\n")
+        before = path.read_text(encoding="utf-8")
+        with self.assertRaises(StorageError):
+            self.ledger().update("TX-000001", {"amount": 5000})
+        self.assertEqual(path.read_text(encoding="utf-8"), before)
+
+
+class DeleteTest(LedgerTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.add("2024-01-10", 1000)
+        self.add("2024-01-11", 2000)
+
+    def test_removes_only_the_target(self) -> None:
+        removed = self.ledger().delete("TX-000001")
+        self.assertEqual(removed.amount, 1000)
+        remaining = self.ledger().search(Query(), 10)
+        self.assertEqual([tx.id for tx in remaining], ["TX-000002"])
+
+    def test_missing_id(self) -> None:
+        with self.assertRaises(NotFoundError):
+            self.ledger().delete("TX-000999")
+
+    def test_numbering_continues_after_deleting_the_last_row(self) -> None:
+        # 마지막 행에서 채번하므로 번호가 재사용된다. 의도된 한계이며 문서에 적는다.
+        self.ledger().delete("TX-000002")
+        self.assertEqual(self.ledger().next_id(), "TX-000002")
+
+
+class CategoryManagementTest(LedgerTestCase):
+    def test_add_and_normalize(self) -> None:
+        self.assertEqual(self.ledger().add_category("  hobby "), "hobby")
+        self.assertIn("hobby", self.ledger().categories())
+
+    def test_duplicate_is_rejected(self) -> None:
+        with self.assertRaises(ValidationError):
+            self.ledger().add_category("food")
+
+    def test_remove_unused(self) -> None:
+        moved = self.ledger().remove_category("rent")
+        self.assertEqual(moved, 0)
+        self.assertNotIn("rent", self.ledger().categories())
+
+    def test_remove_unknown(self) -> None:
+        with self.assertRaises(NotFoundError):
+            self.ledger().remove_category("nope")
+
+    def test_remove_in_use_requires_replacement(self) -> None:
+        self.add("2024-01-10")
+        with self.assertRaises(ValidationError) as ctx:
+            self.ledger().remove_category("food")
+        self.assertIn("1건", ctx.exception.message)
+        self.assertIn("food", self.ledger().categories())
+
+    def test_remove_in_use_moves_transactions(self) -> None:
+        self.add("2024-01-10")
+        self.add("2024-01-11")
+        moved = self.ledger().remove_category("food", "etc")
+        self.assertEqual(moved, 2)
+        self.assertNotIn("food", self.ledger().categories())
+        self.assertEqual(
+            {tx.category for tx in self.ledger().search(Query(), 10)}, {"etc"}
+        )
+
+    def test_replacement_must_exist(self) -> None:
+        self.add("2024-01-10")
+        with self.assertRaises(NotFoundError):
+            self.ledger().remove_category("food", "nope")
+
+    def test_replacement_cannot_be_itself(self) -> None:
+        self.add("2024-01-10")
+        with self.assertRaises(ValidationError):
+            self.ledger().remove_category("food", "food")
+
+    def test_transactions_are_committed_before_category_is_dropped(self) -> None:
+        # 참조를 없앨 때는 참조하는 쪽을 먼저 바꾼다. 중간에 실패해도
+        # 등록되지 않은 카테고리를 가리키는 거래가 생기지 않는다.
+        self.add("2024-01-10")
+        self.ledger().remove_category("food", "etc")
+        categories = self.ledger().categories()
+        for tx in self.ledger().search(Query(), 10):
+            self.assertIn(tx.category, categories)

@@ -7,7 +7,8 @@
 from __future__ import annotations
 
 import heapq
-from typing import Iterator
+from dataclasses import replace
+from typing import Any, Iterator
 
 from budget_app.models import (
     NotFoundError,
@@ -132,3 +133,122 @@ class Ledger:
                 source=source,
             )
         )
+
+    # ── 변경 ────────────────────────────────────────────────────────────
+
+    def _rewrite(self, transform) -> None:
+        """거래 파일을 통째로 다시 쓴다.
+
+        손상 행이 있으면 저장소가 중단시킨다. 건너뛴 채 다시 쓰면 읽지 못한
+        원본이 새 파일에서 사라지기 때문이다.
+        """
+        self.data.transactions.rewrite(transform)
+
+    def update(self, tx_id: str, changes: dict[str, Any]) -> Transaction:
+        if not changes:
+            raise ValidationError(
+                "변경할 항목이 없습니다.",
+                "--date --type --category --amount --memo --tags 중 하나 이상을 지정하세요.",
+            )
+        wanted = parse_tx_id(tx_id)
+        if "category" in changes:
+            changes["category"] = self.require_category(changes["category"])
+
+        updated: list[Transaction] = []
+
+        def transform(row: dict[str, Any]) -> dict[str, Any]:
+            if row.get("id") != wanted:
+                return row
+            current = self._to_transaction(row)
+            # dataclass replace 가 __post_init__ 을 다시 태우므로 변경분도 검증된다.
+            new_tx = replace(current, **changes)
+            updated.append(new_tx)
+            return new_tx.to_dict()
+
+        self._rewrite(transform)
+        if not updated:
+            raise NotFoundError(
+                f"거래를 찾을 수 없습니다: {wanted}", "list 로 id 를 확인하세요."
+            )
+        return updated[0]
+
+    def delete(self, tx_id: str) -> Transaction:
+        wanted = parse_tx_id(tx_id)
+        removed: list[Transaction] = []
+
+        def transform(row: dict[str, Any]) -> dict[str, Any] | None:
+            if row.get("id") != wanted:
+                return row
+            removed.append(self._to_transaction(row))
+            return None
+
+        self._rewrite(transform)
+        if not removed:
+            raise NotFoundError(
+                f"거래를 찾을 수 없습니다: {wanted}", "list 로 id 를 확인하세요."
+            )
+        return removed[0]
+
+    def _to_transaction(self, row: dict[str, Any]) -> Transaction:
+        """쓰기 경로에서는 규칙에 어긋난 행도 손상으로 본다."""
+        try:
+            return Transaction.from_dict(row)
+        except ValidationError as exc:
+            raise StorageError(
+                f"저장된 거래를 읽을 수 없습니다: {exc.message}",
+                f"{self.data.transactions.path} 를 확인하세요.",
+            ) from None
+
+    # ── 카테고리 관리 ────────────────────────────────────────────────────
+
+    def add_category(self, name: str) -> str:
+        category = normalize_category(name)
+        if category in self.categories():
+            raise ValidationError(
+                f"이미 등록된 카테고리입니다: {category}", "category list 로 확인하세요."
+            )
+        self.data.categories.append({"name": category})
+        return category
+
+    def count_by_category(self, name: str) -> int:
+        return sum(1 for tx in self._transactions() if tx.category == name)
+
+    def remove_category(self, name: str, replace_with: str | None = None) -> int:
+        """카테고리를 지운다. 사용 중이면 대체 카테고리로 옮긴 뒤 지운다.
+
+        거래를 먼저 커밋하고 카테고리를 나중에 지운다. 두 파일을 한 번에 바꿀
+        수는 없으므로, 중간에 실패해도 참조가 깨지지 않는 방향을 택한다.
+        중간 실패 시 쓰이지 않는 카테고리가 남을 뿐이다.
+        """
+        category = normalize_category(name)
+        if category not in self.categories():
+            raise NotFoundError(
+                f"등록되지 않은 카테고리입니다: {category}", "category list 로 확인하세요."
+            )
+
+        used = self.count_by_category(category)
+        if used and replace_with is None:
+            raise ValidationError(
+                f"'{category}' 를 사용하는 거래가 {used}건 있습니다.",
+                "--replace-with <카테고리> 로 대체할 카테고리를 지정하세요.",
+            )
+
+        if used:
+            target = self.require_category(str(replace_with))
+            if target == category:
+                raise ValidationError(
+                    "대체 카테고리가 삭제할 카테고리와 같습니다.",
+                    "다른 카테고리를 지정하세요.",
+                )
+
+            def transform(row: dict[str, Any]) -> dict[str, Any]:
+                if row.get("category") != category:
+                    return row
+                return {**row, "category": target}
+
+            self._rewrite(transform)
+
+        self.data.categories.write_all(
+            {"name": item} for item in self.categories() if item != category
+        )
+        return used

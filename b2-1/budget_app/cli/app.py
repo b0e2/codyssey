@@ -10,7 +10,7 @@ import sys
 from argparse import Namespace
 from pathlib import Path
 
-from budget_app.cli.render import format_amount, render_table
+from budget_app.cli.render import format_amount, render_lines, render_table
 from budget_app.decorators import Handler, as_command
 from budget_app.models import (
     AppError,
@@ -269,6 +269,63 @@ def cmd_search(ctx: Context, args: Namespace) -> int:
 
 
 @as_command
+def cmd_update(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    changes: dict[str, object] = {}
+    # 옵션을 아예 주지 않은 것과 빈 문자열로 지운 것을 구분해야 하므로 None 으로만 거른다.
+    if args.date is not None:
+        changes["date"] = parse_date(args.date)
+    if args.type is not None:
+        changes["type"] = parse_type(args.type)
+    if args.category is not None:
+        changes["category"] = args.category
+    if args.amount is not None:
+        changes["amount"] = parse_amount(args.amount)
+    if args.memo is not None:
+        changes["memo"] = args.memo.strip()
+    if args.tags is not None:
+        changes["tags"] = parse_tags(args.tags)
+
+    tx = ledger.update(args.tx_id, changes)
+    print(f"[수정 완료] id={tx.id}")
+    _print_transactions([tx])
+    return 0
+
+
+@as_command
+def cmd_delete(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+    tx = ledger.delete(args.tx_id)
+    print(f"[삭제 완료] id={tx.id} {tx.date.isoformat()} {tx.category} {format_amount(tx.amount)}")
+    return 0
+
+
+@as_command
+def cmd_category(ctx: Context, args: Namespace) -> int:
+    ledger = _open_ledger(ctx)
+
+    if args.action == "list":
+        categories = ledger.categories()
+        if not categories:
+            print("[안내] 등록된 카테고리가 없습니다.")
+            return 0
+        print(render_lines(categories))
+        return 0
+
+    if args.action == "add":
+        name = _ask("카테고리명", ledger.add_category)
+        print(f"[저장 완료] category={name}")
+        return 0
+
+    moved = ledger.remove_category(args.name, args.replace_with)
+    if moved:
+        print(f"[삭제 완료] category={args.name} (거래 {moved}건을 {args.replace_with} 로 옮김)")
+    else:
+        print(f"[삭제 완료] category={args.name}")
+    return 0
+
+
+@as_command
 def _unimplemented(ctx: Context, args: Namespace) -> int:
     raise AppError(
         f"'{args.command}' 명령은 아직 구현되지 않았습니다.",
@@ -280,6 +337,9 @@ HANDLERS: dict[str, Handler] = {
     "add": cmd_add,
     "list": cmd_list,
     "search": cmd_search,
+    "update": cmd_update,
+    "delete": cmd_delete,
+    "category": cmd_category,
 }
 
 
