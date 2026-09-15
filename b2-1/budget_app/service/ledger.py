@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import heapq
 from dataclasses import replace
+from pathlib import Path
 from typing import Any, Iterator
 
 from budget_app.models import (
@@ -252,3 +253,15 @@ class Ledger:
             {"name": item} for item in self.categories() if item != category
         )
         return used
+
+
+def open_ledger(data_dir: Path) -> tuple[Ledger, list[str]]:
+    """데이터 디렉터리를 준비하고 `Ledger` 를 만든다.
+
+    CLI 가 저장소를 직접 열면 계층이 샌다. 디렉터리 생성과 기본 카테고리
+    시드는 업무 규칙이므로 여기서 처리하고, 새로 심은 카테고리만 알려준다.
+    """
+    data = DataDir(data_dir)
+    seeded = data.ensure()
+    ledger = Ledger(data)
+    return ledger, ledger.categories() if seeded else []

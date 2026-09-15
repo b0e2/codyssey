@@ -24,11 +24,10 @@ from budget_app.models import (
     parse_tags,
     parse_type,
 )
-from budget_app.service.ledger import Ledger
+from budget_app.service.ledger import Ledger, open_ledger
 from budget_app.service.porting import Porting
 from budget_app.service.recurring import Recurring
 from budget_app.service.reports import Reports
-from budget_app.storage import DEFAULT_CATEGORIES, DataDir
 
 DEFAULT_DATA_DIR = "./data"
 DEFAULT_LIST_LIMIT = 20
@@ -159,14 +158,14 @@ _MEMO_MAX_WIDTH = 24
 
 
 def _open_ledger(ctx: Context) -> Ledger:
-    data = DataDir(ctx.data_dir)
-    if data.ensure():
+    ledger, seeded = open_ledger(ctx.data_dir)
+    if seeded:
         print(
             "[안내] 데이터 디렉터리를 만들고 기본 카테고리를 등록했습니다: "
-            + ", ".join(DEFAULT_CATEGORIES),
+            + ", ".join(seeded),
             file=sys.stderr,
         )
-    return Ledger(data)
+    return ledger
 
 
 def _report_warnings(ledger: Ledger) -> None:
