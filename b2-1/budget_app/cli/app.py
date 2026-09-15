@@ -6,7 +6,11 @@
 from __future__ import annotations
 
 import argparse
+from argparse import Namespace
 from pathlib import Path
+
+from budget_app.decorators import Handler, as_command
+from budget_app.models import AppError, Context
 
 DEFAULT_DATA_DIR = "./data"
 DEFAULT_LIST_LIMIT = 20
@@ -74,6 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     p_budget = sub.add_parser("budget", parents=[common], help="예산 설정·조회")
+    p_budget.set_defaults(group_parser=p_budget)
     budget_sub = p_budget.add_subparsers(dest="action", metavar="<action>")
     p_budget_set = budget_sub.add_parser("set", parents=[common], help="월 예산 저장")
     p_budget_set.add_argument("--month", required=True, metavar="YYYY-MM")
@@ -81,6 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
     budget_sub.add_parser("list", parents=[common], help="예산 목록")
 
     p_category = sub.add_parser("category", parents=[common], help="카테고리 관리")
+    p_category.set_defaults(group_parser=p_category)
     category_sub = p_category.add_subparsers(dest="action", metavar="<action>")
     category_sub.add_parser("add", parents=[common], help="카테고리 추가 (대화형)")
     category_sub.add_parser("list", parents=[common], help="카테고리 목록")
@@ -114,6 +120,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("backup", parents=[common], help="데이터 파일 백업")
 
     p_recurring = sub.add_parser("recurring", parents=[common], help="반복 내역 관리")
+    p_recurring.set_defaults(group_parser=p_recurring)
     recurring_sub = p_recurring.add_subparsers(dest="action", metavar="<action>")
     recurring_sub.add_parser("add", parents=[common], help="반복 규칙 추가 (대화형)")
     recurring_sub.add_parser("list", parents=[common], help="반복 규칙 목록")
@@ -125,6 +132,21 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+@as_command
+def _unimplemented(ctx: Context, args: Namespace) -> int:
+    raise AppError(
+        f"'{args.command}' 명령은 아직 구현되지 않았습니다.",
+        "python -m budget_app --help 로 사용 가능한 명령을 확인하세요.",
+    )
+
+
+HANDLERS: dict[str, Handler] = {}
+
+
+def dispatch(ctx: Context, args: Namespace) -> int:
+    return HANDLERS.get(args.command, _unimplemented)(ctx, args)
+
+
 def main(argv: list[str]) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -133,6 +155,10 @@ def main(argv: list[str]) -> int:
         parser.print_help()
         return 2
 
-    print(f"[오류] '{args.command}' 명령은 아직 구현되지 않았습니다.")
-    print("[힌트] python -m budget_app --help 로 사용 가능한 명령을 확인하세요.")
-    return 1
+    group_parser = getattr(args, "group_parser", None)
+    if group_parser is not None and getattr(args, "action", None) is None:
+        group_parser.print_help()
+        return 2
+
+    ctx = Context(data_dir=args.data_dir, verbose=args.verbose)
+    return dispatch(ctx, args)
