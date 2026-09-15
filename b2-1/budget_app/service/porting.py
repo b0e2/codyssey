@@ -27,6 +27,7 @@ from budget_app.models import (
     parse_type,
 )
 from budget_app.service.ledger import Ledger
+from budget_app.storage import io_guard
 
 CSV_COLUMNS = ("date", "type", "category", "amount", "memo", "tags")
 REQUIRED_COLUMNS = ("date", "type", "category", "amount")
@@ -66,8 +67,9 @@ class Porting:
         return len(rows)
 
     def _write_csv(self, out: Path, rows: list[Transaction]) -> None:
-        out.parent.mkdir(parents=True, exist_ok=True)
-        tmp = tempfile.NamedTemporaryFile(
+        with io_guard(out, "저장"):
+            out.parent.mkdir(parents=True, exist_ok=True)
+            tmp = tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
             newline="",
@@ -120,7 +122,7 @@ class Porting:
         categories = set(self.ledger.categories())
         next_seq = int(self.ledger.next_id()[3:])
 
-        with src.open(encoding="utf-8", newline="") as fp:
+        with io_guard(src, "읽기"), src.open(encoding="utf-8", newline="") as fp:
             reader = csv.DictReader(fp)
             self._check_header(src, reader.fieldnames)
             for line_no, row in enumerate(reader, start=2):  # 1행은 헤더
@@ -176,7 +178,7 @@ class Porting:
     @staticmethod
     def _write_failures(src: Path, failures: list[tuple[int, str]]) -> Path:
         path = src.with_name(src.name + ".errors.csv")
-        with path.open("w", encoding="utf-8", newline="") as fp:
+        with io_guard(path, "저장"), path.open("w", encoding="utf-8", newline="") as fp:
             writer = csv.writer(fp)
             writer.writerow(("line_no", "reason"))
             writer.writerows(failures)

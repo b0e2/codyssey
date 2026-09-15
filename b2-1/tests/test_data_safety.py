@@ -5,9 +5,12 @@
 
 from __future__ import annotations
 
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from datetime import date
+from unittest.mock import patch
 from pathlib import Path
 
 from budget_app.models import Query, StorageError, ValidationError
@@ -15,7 +18,7 @@ from budget_app.service.ledger import Ledger, open_ledger
 from budget_app.service.porting import Porting
 from budget_app.service.recurring import Recurring
 from budget_app.service.reports import Reports
-from budget_app.storage import DataDir
+from budget_app.storage import DataDir, JsonlStore
 
 
 class SafetyTestCase(unittest.TestCase):
@@ -164,3 +167,94 @@ class CorruptionLineNumberTest(SafetyTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RewriteOrderTest(SafetyTestCase):
+    def test_corrupt_category_file_blocks_before_transactions_change(self) -> None:
+        # 거래를 먼저 옮긴 뒤에 카테고리 파일이 깨진 걸 알게 되면,
+        # 명령은 실패했는데 거래만 바뀐 상태로 남는다.
+        self.ledger().create(
+            date=date(2024, 1, 15), type="expense", category="food", amount=1000
+        )
+        with self.data.categories.path.open("a", encoding="utf-8") as fp:
+            fp.write("broken\n")
+        before = self.data.transactions.path.read_text(encoding="utf-8")
+
+        with self.assertRaises(StorageError):
+            self.ledger().remove_category("food", "etc")
+
+        self.assertEqual(self.data.transactions.path.read_text(encoding="utf-8"), before)
+
+
+class SemanticCorruptionTest(SafetyTestCase):
+    """JSON 문법은 맞지만 규칙에 어긋난 행도 재작성에서 막아야 한다."""
+
+    def _write_semantically_broken(self) -> str:
+        self.data.transactions.path.write_text(
+            '{"id": "TX-000001", "type": "expense", "date": "2024-01-15",'
+            ' "amount": 1000, "category": "food"}\n'
+            '{"id": "TX-000002", "type": "expense", "date": "2024-01-16",'
+            ' "amount": 0, "category": "food"}\n',
+            encoding="utf-8",
+        )
+        return self.data.transactions.path.read_text(encoding="utf-8")
+
+    def test_update_aborts(self) -> None:
+        before = self._write_semantically_broken()
+        with self.assertRaises(StorageError):
+            self.ledger().update("TX-000001", {"amount": 5000})
+        self.assertEqual(self.data.transactions.path.read_text(encoding="utf-8"), before)
+
+    def test_delete_aborts(self) -> None:
+        before = self._write_semantically_broken()
+        with self.assertRaises(StorageError):
+            self.ledger().delete("TX-000001")
+        self.assertEqual(self.data.transactions.path.read_text(encoding="utf-8"), before)
+
+    def test_category_replacement_aborts(self) -> None:
+        before = self._write_semantically_broken()
+        with self.assertRaises(StorageError):
+            self.ledger().remove_category("food", "etc")
+        self.assertEqual(self.data.transactions.path.read_text(encoding="utf-8"), before)
+
+
+class ApplyWritesOnceTest(SafetyTestCase):
+    def test_store_is_replaced_exactly_once(self) -> None:
+        # 규칙마다 append 하던 구현도 "최종 2건" 검사는 통과한다. 쓰기 횟수를 직접 센다.
+        # DataDir.transactions 는 접근할 때마다 새 JsonlStore 를 만들므로
+        # 인스턴스가 아니라 클래스에 건다.
+        recurring = Recurring(self.ledger())
+        recurring.create(name="월세", day=25, type="expense", category="rent", amount=1)
+        recurring.create(name="월급", day=25, type="income", category="salary", amount=2)
+
+        calls = {"write_all": 0, "append": 0}
+        real_write, real_append = JsonlStore.write_all, JsonlStore.append
+
+        def counted_write(store, rows):
+            if store.path == self.data.transactions.path:
+                calls["write_all"] += 1
+            return real_write(store, rows)
+
+        def counted_append(store, row):
+            if store.path == self.data.transactions.path:
+                calls["append"] += 1
+            return real_append(store, row)
+
+        with patch.object(JsonlStore, "write_all", counted_write), patch.object(
+            JsonlStore, "append", counted_append
+        ):
+            created = Recurring(self.ledger()).apply("2024-03")
+
+        self.assertEqual(len(created), 2)
+        self.assertEqual(calls, {"write_all": 1, "append": 0})
+
+
+class ExportPeriodTest(SafetyTestCase):
+    def test_one_sided_range_is_rejected_by_the_cli(self) -> None:
+        from budget_app.cli.app import main
+
+        with redirect_stderr(io.StringIO()):
+            code = main(["--data-dir", str(self.data.root), "export",
+                         "--out", str(self.root / "o.csv"), "--from", "2024-01-01"])
+        self.assertEqual(code, 2)
+        self.assertFalse((self.root / "o.csv").exists())
