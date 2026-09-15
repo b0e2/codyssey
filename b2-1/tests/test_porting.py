@@ -181,3 +181,20 @@ class RoundTripTest(PortingTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BackupTest(PortingTestCase):
+    def test_copies_data_files_only(self) -> None:
+        self.add("2024-01-15")
+        (self.data.root / "app.log").write_text("noise\n", encoding="utf-8")
+        dest = self.porting().backup()
+        self.assertEqual(
+            sorted(p.name for p in dest.iterdir()),
+            ["budgets.jsonl", "categories.jsonl", "recurring.jsonl", "transactions.jsonl"],
+        )
+
+    def test_backup_keeps_original_bytes(self) -> None:
+        self.add("2024-01-15")
+        original = self.data.transactions.path.read_bytes()
+        dest = self.porting().backup()
+        self.assertEqual((dest / "transactions.jsonl").read_bytes(), original)
