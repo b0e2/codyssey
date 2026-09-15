@@ -1,0 +1,382 @@
+/*
+ * Projects 섹션의 표현. features/projects.js와 짝을 이룬다.
+ * 카드, 언어 필터, 스켈레톤, 배지, 상태 데모 컨트롤, 네 상태 화면이 여기 모인다.
+ */
+
+/* ── 언어 필터 ──────────────────────────────────── */
+
+.filter-btn {
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.filter-btn:hover {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+/* 선택된 칩은 accent로 채워 지금 어떤 필터가 걸려 있는지 한눈에 보이게 한다. */
+.filter-btn.is-active {
+  border-color: transparent;
+  background-color: var(--color-accent);
+  color: var(--color-ink);
+}
+
+/* ── 카드 ───────────────────────────────────────── */
+
+.project-card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+}
+
+/* 이름과 배지를 한 줄에 두되, 이름이 길어지면 배지가 밀리지 않게 폭을 고정한다. */
+.project-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.project-card__title {
+  font-size: var(--text-md);
+}
+
+/*
+ * 제목이 곧 저장소로 나가는 링크다. 눌러 보기 전에는 알 수 없으므로 화살표를
+ * 붙여 미리 알린다. Projects 섹션 위쪽의 계정 링크와 같은 표시를 써서
+ * 이 화면 안에서 "밖으로 나간다"는 신호가 한 가지로 유지된다.
+ */
+.project-card__link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  transition: color var(--transition-fast);
+}
+
+.project-card__link:hover {
+  color: color-mix(in srgb, var(--color-accent) 70%, var(--color-text));
+}
+
+/*
+ * 평소에는 흐리게 두고 카드에 마우스를 올리면 제목과 같은 색이 된다.
+ * 카드마다 붙는 표시라 기본 상태에서 제목만큼 눈에 띄면 목록이 시끄러워진다.
+ */
+.project-card__mark {
+  font-size: 0.85em;
+  color: var(--color-muted);
+  transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.project-card:hover .project-card__mark,
+.project-card__link:focus-visible .project-card__mark {
+  color: inherit;
+  transform: translate(0.1em, -0.1em);
+}
+
+.project-card__description {
+  font-size: var(--text-base);
+  color: var(--color-muted);
+}
+
+.project-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+/* 언어 앞의 점은 목록에서 언어를 빠르게 훑기 위한 표시다. */
+.project-card__language {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.project-card__language::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+}
+
+.project-card__stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.project-card__pushed {
+  color: var(--color-muted);
+}
+
+/* ── origin/fork 배지 ───────────────────────────── */
+
+/*
+ * fork도 목록에 실으므로, 직접 시작한 저장소와 남의 코드에서 갈라져 나온
+ * 저장소를 카드에서 바로 구분할 수 있어야 한다.
+ */
+.badge {
+  flex-shrink: 0;
+  padding: 0.15rem var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-raised);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: var(--tracking-label);
+  color: var(--color-muted);
+}
+
+.badge--origin {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
+  color: color-mix(in srgb, var(--color-accent) 55%, var(--color-text));
+}
+
+/* ── 로딩 스켈레톤 ──────────────────────────────── */
+
+/*
+ * 카드가 놓일 자리를 미리 잡아 두는 회색 덩어리다.
+ * 실제 카드와 같은 padding·radius를 써야 도착하는 순간 크기가 튀지 않는다.
+ */
+.skeleton-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background-color: var(--color-surface);
+}
+
+.skeleton {
+  display: block;
+  height: 0.75rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-border);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.skeleton--title {
+  width: 55%;
+  height: 1.125rem;
+}
+
+.skeleton--text {
+  width: 100%;
+}
+
+.skeleton--short {
+  width: 72%;
+}
+
+.skeleton--meta {
+  width: 40%;
+  margin-top: var(--space-1);
+}
+
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ── STATE DEMO 컨트롤 ──────────────────────────── */
+
+/*
+ * 평가자가 네 상태를 직접 확인할 수 있게 기본으로 노출한다.
+ * 실제 데이터와 헷갈리지 않도록 라벨과 설명으로 성격을 밝힌다.
+ */
+.state-demo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.state-demo__label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-muted);
+}
+
+/* 좁은 화면에서 네 버튼이 줄바꿈되어도 라벨과 어긋나지 않게 따로 묶는다. */
+.state-demo__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/*
+ * 네 버튼 모두 점선이고, 지금 보고 있는 상태만 밝은 선과 글자로 떠오른다.
+ * 언어 필터 칩과 달리 완전한 pill이 아니라 각을 조금 남긴 사각형이어서,
+ * 데이터를 거르는 칩과 화면을 바꿔 보는 컨트롤이 한눈에 구분된다.
+ */
+.state-demo__btn {
+  min-height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-input);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  white-space: nowrap;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.state-demo__btn:hover {
+  color: var(--color-text);
+}
+
+.state-demo__btn.is-active {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+/*
+ * 카드 영역 위의 안내 줄. 데모 안내와 캐시 안내가 같은 자리를 쓴다.
+ * 캐시 안내에는 새로고침 버튼이 함께 들어가므로 한 줄 안에서 문구와 버튼을 나눈다.
+ */
+.projects__demo-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: 0.375rem var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-input);
+  background-color: var(--color-raised);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+.projects__demo-notice[hidden] {
+  display: none;
+}
+
+/* 요청이 실패해 옛 목록을 보여 주는 동안에는 테두리로도 평소와 다름을 알린다. */
+.projects__demo-notice--stale {
+  border-color: var(--color-danger-border);
+}
+
+.projects__notice-text {
+  flex: 1 1 16rem;
+  line-height: 1.6;
+}
+
+/*
+ * 안내 한 줄에 얹히는 버튼이라 시각적으로는 작게 두되,
+ * 누를 수 있는 높이는 44px을 지킨다.
+ */
+.projects__notice-refresh {
+  flex-shrink: 0;
+  min-height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  background-color: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast);
+}
+
+.projects__notice-refresh:hover {
+  border-color: var(--color-text);
+}
+
+/* ── 상태 화면 ──────────────────────────────────── */
+
+/*
+ * 로딩·에러·빈 상태가 공유하는 자리.
+ * 카드가 보일 때는 이 영역이 비고, 카드가 없을 때만 자리를 대신한다.
+ */
+.state {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-3);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-card);
+  color: var(--color-muted);
+  text-align: center;
+}
+
+/*
+ * 로딩만 테두리 없이 한 줄로 눕힌다. 카드 자리는 이미 스켈레톤이 채우고 있어서,
+ * 여기까지 큰 점선 상자를 두면 빈 상태처럼 보이고 세로로도 크게 밀린다.
+ */
+.state--loading {
+  grid-auto-flow: column;
+  justify-content: start;
+  justify-items: start;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 0 var(--space-3);
+  border: none;
+  text-align: left;
+}
+
+/* 오류만 실선과 danger 색을 써서 다른 상태와 성격이 다름을 드러낸다. */
+.state--error {
+  border-style: solid;
+  border-color: var(--color-danger-border);
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-fg);
+}
+
+.state__badge {
+  padding: 0.15rem var(--space-2);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-danger);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-surface);
+}
+
+.spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spinner-rotate 700ms linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+
+  /* pulse는 자리를 알리는 역할만 하므로, 멈춰도 스켈레톤은 그대로 보인다. */
+  .skeleton {
+    animation: none;
+  }
+
+  /* 색 변화만 남기고 화살표가 움직이는 부분은 뺀다. */
+  .project-card:hover .project-card__mark,
+  .project-card__link:focus-visible .project-card__mark {
+    transform: none;
+  }
+}

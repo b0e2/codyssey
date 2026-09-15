@@ -1,0 +1,126 @@
+/*
+ * 디자인 토큰.
+ * 컴포넌트는 의미 기반 변수(--color-surface 등)만 사용하고,
+ * 실제 색상 값은 이 파일의 테마 블록에서만 정의한다.
+ * 덕분에 테마 전환은 루트의 data-theme 하나로 끝난다.
+ */
+:root {
+  /* 본문은 한글 가독성이 좋은 고딕, 제목·수치는 기하학적 산세리프,
+     라벨·메타는 자간이 고른 모노를 쓴다. 역할이 다르므로 변수도 나눈다. */
+  --font-sans: "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+  --font-display: "Space Grotesk", "Noto Sans KR", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2rem;
+
+  /*
+   * Hero 제목은 브레이크포인트마다 값을 갈아 끼운다.
+   * 타이핑 자리는 두 줄로 고정돼 있으므로, 글자 크기는 가장 긴 문구가 그 두 줄
+   * 안에 들어가는 값이어야 한다. 기준은 글자 끝이 아니라 커서 끝이다. 커서도 같은
+   * 줄을 차지하므로, 글자만 맞추면 커서가 다음 줄로 밀려 잘린다.
+   * 상한 32px은 480px 이상에서 쓰고, 그보다 좁아지면 폭에 비례해 줄어든다.
+   */
+  --text-hero: clamp(1.3rem, 6.5vw, 2rem);
+
+  --leading-body: 1.7;
+  --tracking-display: -0.02em;
+  --tracking-hero: -0.035em;
+  --tracking-label: 0.12em;
+
+  /* 8 · 12 · 16 · 24 · 40 · 72 · 88 스케일 */
+  --space-1: 0.5rem;
+  --space-2: 0.75rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2.5rem;
+  --space-6: 4.5rem;
+  --space-7: 5.5rem;
+
+  --radius-input: 10px;
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgb(23 21 15 / 0.06);
+  --shadow-card: 0 18px 40px rgb(23 21 15 / 0.1);
+
+  --transition-fast: 160ms ease;
+  --transition-base: 240ms ease;
+
+  --header-height: 4rem;
+  /* 앵커 이동 시 sticky 헤더에 가리지 않도록 확보하는 여백. */
+  --anchor-offset: 4.5rem;
+  --container-max: 71.25rem;
+  --container-pad: 1.25rem;
+
+  /* 라이트 테마 (기본) */
+  --color-bg: #faf9f7;
+  --color-surface: #ffffff;
+  --color-text: #17150f;
+  --color-muted: #6b6559;
+  --color-border: #e6e2d9;
+  --color-accent: #7cf0bd;
+  --color-ink: #17150f;
+  --color-danger: #c0392b;
+  --color-danger-border: #e0a3a3;
+  --color-danger-bg: #fdecec;
+  --color-danger-fg: #a12b2b;
+
+  /* 헤더는 스크롤 중 아래 내용이 비쳐야 하므로 배경색에 투명도를 준다. */
+  --color-header-bg: rgb(250 249 247 / 0.82);
+  /* 카드 위에 한 겹 더 올라가는 칩·배지처럼 미세한 대비가 필요한 면. */
+  --color-raised: #f3f1ec;
+}
+
+[data-theme="dark"] {
+  --color-bg: #100f0d;
+  --color-surface: #191814;
+  --color-text: #f5f2ea;
+  --color-muted: #9d968a;
+  --color-border: #2b2924;
+  --color-danger: #ff9d92;
+  --color-danger-border: #6b3430;
+  --color-danger-bg: #2a1614;
+  --color-danger-fg: #ffb3a8;
+
+  --color-header-bg: rgb(16 15 13 / 0.82);
+  --color-raised: #221f1a;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-card: 0 18px 40px rgb(0 0 0 / 0.45);
+}
+
+/* accent는 두 테마에서 같은 값을 쓴다. 브랜드 색이 테마마다 달라지면
+   버튼과 강조 표시가 서로 다른 제품처럼 보이기 때문이다. */
+
+@media (min-width: 768px) {
+  :root {
+    /*
+     * 이 구간은 사진 칸이 텍스트 칸을 좁히는데 글자 크기까지 함께 뛴다.
+     * 768px에서 텍스트 칸은 512px뿐이라 48px 고정값으로는 타이핑 문구가 세 줄이 된다.
+     * 폭에 비례시켜 768px에서 40px로 시작하고, 넓어지면서 상한 48px에 닿게 한다.
+     */
+    --text-hero: clamp(2.375rem, 5vw, 3rem);
+    --space-6: 5.5rem;
+    --space-7: 7rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --container-pad: 2.5rem;
+  }
+}
+
+@media (min-width: 1180px) {
+  :root {
+    /* 커서까지 두 줄 안에 들어가는 상한이 57px이라 56px로 둔다. */
+    --text-hero: 3.5rem;
+  }
+}
