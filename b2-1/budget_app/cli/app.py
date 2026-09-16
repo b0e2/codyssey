@@ -41,17 +41,23 @@ _MEMO_MAX_WIDTH = 24
 def _open_ledger(ctx: Context) -> Ledger:
     ledger, seeded = open_ledger(ctx.data_dir)
     if seeded:
-        print(
+        _warn(
             "[안내] 데이터 디렉터리를 만들고 기본 카테고리를 등록했습니다: "
-            + ", ".join(seeded),
-            file=sys.stderr,
+            + ", ".join(seeded)
         )
     return ledger
 
 
-def _report_warnings(ledger: Ledger) -> None:
-    for warning in ledger.warnings:
-        print(warning, file=sys.stderr)
+def _warn(*lines: str) -> None:
+    """경고와 안내는 stdout 을 더럽히지 않도록 stderr 로 보낸다."""
+    for line in lines:
+        print(line, file=sys.stderr)
+
+
+def _report_warnings(*sources: object) -> None:
+    """서비스가 모아 둔 손상 행 경고를 내보낸다."""
+    for source in sources:
+        _warn(*getattr(source, "warnings", ()))
 
 
 def _print_transactions(rows: list[Transaction]) -> None:
@@ -93,9 +99,7 @@ def _ask(label: str, parse, *, optional: bool = False):
         try:
             return parse(raw)
         except AppError as exc:
-            print(f"[오류] {exc.message}", file=sys.stderr)
-            if exc.hint:
-                print(f"[힌트] {exc.hint}", file=sys.stderr)
+            _warn(f"[오류] {exc.message}", *( [f"[힌트] {exc.hint}"] if exc.hint else [] ))
     raise ValidationError(
         f"{label} 입력을 {MAX_INPUT_ATTEMPTS}회 확인하지 못해 중단합니다.",
         "값을 확인한 뒤 다시 실행하세요.",
@@ -320,51 +324,57 @@ def cmd_backup(ctx: Context, args: Namespace) -> int:
 def cmd_recurring(ctx: Context, args: Namespace) -> int:
     ledger = _open_ledger(ctx)
     recurring = Recurring(ledger)
+    actions = {
+        "list": _recurring_list,
+        "add": _recurring_add,
+        "remove": _recurring_remove,
+        "apply": _recurring_apply,
+    }
+    return actions[args.action](recurring, ledger, args)
 
-    if args.action == "list":
-        rules = recurring.rules()
-        _report_warnings(ledger)
-        for warning in recurring.warnings:
-            print(warning, file=sys.stderr)
-        if not rules:
-            print("[안내] 등록된 반복 규칙이 없습니다.")
-            return 0
-        print(
-            render_table(
-                ("id", "이름", "일자", "타입", "카테고리", "금액"),
-                [
-                    [r.id, r.name, str(r.day), r.type, r.category, format_amount(r.amount)]
-                    for r in rules
-                ],
-                ("left", "left", "right", "left", "left", "right"),
-            )
+
+def _recurring_list(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
+    rules = recurring.rules()
+    _report_warnings(ledger, recurring)
+    if not rules:
+        print("[안내] 등록된 반복 규칙이 없습니다.")
+        return 0
+    print(
+        render_table(
+            ("id", "이름", "일자", "타입", "카테고리", "금액"),
+            [
+                [r.id, r.name, str(r.day), r.type, r.category, format_amount(r.amount)]
+                for r in rules
+            ],
+            ("left", "left", "right", "left", "left", "right"),
         )
-        return 0
+    )
+    return 0
 
-    if args.action == "add":
-        name = _ask("규칙 이름", lambda raw: raw.strip() or _blank("규칙 이름"))
-        day = _ask("일자(1-31)", _parse_day)
-        tx_type = _ask("타입(income/expense)", parse_type)
-        category = _ask("카테고리", ledger.require_category)
-        amount = _ask("금액(양수)", parse_amount)
-        memo = _ask("메모(선택)", lambda raw: raw.strip(), optional=True)
-        tags = _ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True)
-        rule = recurring.create(
-            name=name, day=day, type=tx_type, category=category,
-            amount=amount, memo=memo, tags=tags,
-        )
-        print(f"[저장 완료] id={rule.id} {rule.name} 매월 {rule.day}일")
-        return 0
 
-    if args.action == "remove":
-        rule = recurring.remove(args.rule_id)
-        print(f"[삭제 완료] id={rule.id} {rule.name}")
-        return 0
+def _recurring_add(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
+    rule = recurring.create(
+        name=_ask("규칙 이름", _require_text("규칙 이름")),
+        day=_ask("일자(1-31)", _parse_day),
+        type=_ask("타입(income/expense)", parse_type),
+        category=_ask("카테고리", ledger.require_category),
+        amount=_ask("금액(양수)", parse_amount),
+        memo=_ask("메모(선택)", lambda raw: raw.strip(), optional=True),
+        tags=_ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True),
+    )
+    print(f"[저장 완료] id={rule.id} {rule.name} 매월 {rule.day}일")
+    return 0
 
+
+def _recurring_remove(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
+    rule = recurring.remove(args.rule_id)
+    print(f"[삭제 완료] id={rule.id} {rule.name}")
+    return 0
+
+
+def _recurring_apply(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
     created = recurring.apply(args.month)
-    _report_warnings(ledger)
-    for warning in recurring.warnings:
-        print(warning, file=sys.stderr)
+    _report_warnings(ledger, recurring)
     if not created:
         print(f"[안내] {args.month} 에 새로 생성할 반복 내역이 없습니다.")
         return 0
@@ -373,8 +383,16 @@ def cmd_recurring(ctx: Context, args: Namespace) -> int:
     return 0
 
 
-def _blank(label: str):
-    raise ValidationError(f"{label}은(는) 비어 있을 수 없습니다.", "값을 입력하세요.")
+def _require_text(label: str):
+    """비어 있으면 거부하는 입력 변환기."""
+
+    def parse(raw: str) -> str:
+        text = raw.strip()
+        if not text:
+            raise ValidationError(f"{label}은(는) 비어 있을 수 없습니다.", "값을 입력하세요.")
+        return text
+
+    return parse
 
 
 def _parse_day(raw: str) -> int:

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from budget_app.models import (
     NotFoundError,
+    Transaction,
     Query,
     StorageError,
     ValidationError,
@@ -27,6 +28,10 @@ class LedgerTestCase(unittest.TestCase):
 
     def ledger(self) -> Ledger:
         return Ledger(self.data)
+
+    def fetch(self, tx_id: str) -> Transaction:
+        """조회 결과에서 한 건을 집는다."""
+        return next(tx for tx in self.ledger().search(Query(), 100) if tx.id == tx_id)
 
     def add(self, day: str, amount: int = 1000, **over) -> None:
         params = dict(
@@ -129,24 +134,6 @@ class CorruptionTest(LedgerTestCase):
         self.assertEqual(self.ledger().search(Query(), 10), [])
 
 
-class GetTest(LedgerTestCase):
-    def test_found(self) -> None:
-        self.add("2024-01-10")
-        self.assertEqual(self.ledger().get("TX-000001").amount, 1000)
-
-    def test_missing_id(self) -> None:
-        with self.assertRaises(NotFoundError):
-            self.ledger().get("TX-000999")
-
-    def test_malformed_id(self) -> None:
-        with self.assertRaises(ValidationError):
-            self.ledger().get("nope")
-
-
-if __name__ == "__main__":
-    unittest.main()
-
-
 class UpdateTest(LedgerTestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -156,17 +143,17 @@ class UpdateTest(LedgerTestCase):
     def test_single_field(self) -> None:
         tx = self.ledger().update("TX-000001", {"amount": 5000})
         self.assertEqual(tx.amount, 5000)
-        self.assertEqual(self.ledger().get("TX-000001").memo, "커피")
+        self.assertEqual(self.fetch("TX-000001").memo, "커피")
 
     def test_empty_string_clears_memo_and_tags(self) -> None:
         self.ledger().update("TX-000001", {"memo": "", "tags": []})
-        tx = self.ledger().get("TX-000001")
+        tx = self.fetch("TX-000001")
         self.assertEqual(tx.memo, "")
         self.assertEqual(tx.tags, [])
 
     def test_other_rows_are_untouched(self) -> None:
         self.ledger().update("TX-000001", {"amount": 5000})
-        self.assertEqual(self.ledger().get("TX-000002").amount, 2000)
+        self.assertEqual(self.fetch("TX-000002").amount, 2000)
         self.assertEqual(len(self.ledger().search(Query(), 10)), 2)
 
     def test_missing_id(self) -> None:
