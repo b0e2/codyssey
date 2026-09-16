@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from budget_app.cli.app import build_parser
+from budget_app.cli.parser import build_parser
 
 
 class GlobalOptionPositionTest(unittest.TestCase):

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import heapq
 from dataclasses import replace
+from itertools import chain
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -21,7 +22,15 @@ from budget_app.models import (
     normalize_category,
     parse_tx_id,
 )
-from budget_app.storage import DataDir, describe_corruption
+from budget_app.service.reading import read
+from budget_app.storage import DataDir
+
+
+def _category_name(row: dict[str, Any]) -> str:
+    name = row.get("name")
+    if not isinstance(name, str):
+        raise ValidationError("카테고리 이름이 문자열이 아닙니다.")
+    return normalize_category(name)
 
 
 class Ledger:
@@ -43,34 +52,15 @@ class Ledger:
         파일을 다시 쓰는 경로에서는 strict 로 읽는다. 손상 행을 건너뛴 채
         저장하면 읽지 못한 카테고리가 사라진다.
         """
-        if strict:
-            names: list[str] = []
-            for row in self.data.categories.stream_strict():
-                name = row.get("name")
-                try:
-                    if not isinstance(name, str):
-                        raise ValidationError("카테고리 이름이 문자열이 아닙니다.")
-                    names.append(normalize_category(name))
-                except ValidationError as exc:
-                    raise StorageError(
-                        f"저장된 카테고리를 읽을 수 없습니다: {exc.message}",
-                        f"{self.data.categories.path} 를 확인하세요.",
-                    ) from None
-            return names
-
-        corrupt: list[int] = []
-        names = []
-        for line_no, row in self.data.categories.stream_numbered(corrupt):
-            name = row.get("name")
-            if isinstance(name, str):
-                names.append(name)
-            else:
-                corrupt.append(line_no)
-        if corrupt:
-            self.warnings.append(
-                describe_corruption(self.data.categories.path, sorted(corrupt))
+        return list(
+            read(
+                self.data.categories,
+                _category_name,
+                label="카테고리",
+                strict=strict,
+                warnings=self.warnings,
             )
-        return names
+        )
 
     def require_category(self, name: str) -> str:
         category = normalize_category(name)
@@ -85,18 +75,12 @@ class Ledger:
 
     def stream_transactions(self) -> Iterator[Transaction]:
         """정상 행만 흘린다. 손상 행과 규칙에 어긋난 행은 건너뛰고 경고로 모은다."""
-        corrupt: list[int] = []
-        for line_no, row in self.data.transactions.stream_numbered(corrupt):
-            try:
-                yield Transaction.from_dict(row)
-            except ValidationError:
-                # 실제 파일 줄 번호로 기록한다. 세어 가며 매기면 앞의 빈 줄이나
-                # 깨진 줄만큼 어긋나 사용자가 엉뚱한 줄을 찾게 된다.
-                corrupt.append(line_no)
-        if corrupt:
-            self.warnings.append(
-                describe_corruption(self.data.transactions.path, sorted(corrupt))
-            )
+        return read(
+            self.data.transactions,
+            Transaction.from_dict,
+            label="거래",
+            warnings=self.warnings,
+        )
 
     def search(self, query: Query, limit: int) -> list[Transaction]:
         """조건에 맞는 거래를 최신순으로 돌려준다.
@@ -109,15 +93,6 @@ class Ledger:
             raise ValidationError("--limit 은 1 이상이어야 합니다.", f"입력값: {limit}")
         hits = (tx for tx in self.stream_transactions() if query.matches(tx))
         return heapq.nlargest(limit, hits, key=lambda tx: (tx.date, tx.seq))
-
-    def get(self, tx_id: str) -> Transaction:
-        wanted = parse_tx_id(tx_id)
-        for tx in self.stream_transactions():
-            if tx.id == wanted:
-                return tx
-        raise NotFoundError(
-            f"거래를 찾을 수 없습니다: {wanted}", "list 로 id 를 확인하세요."
-        )
 
     # ── 쓰기 ────────────────────────────────────────────────────────────
 
@@ -174,10 +149,12 @@ class Ledger:
         중단한다는 약속도 문법 오류에만 적용된다.
         """
 
-        def guarded(row: dict[str, Any]) -> dict[str, Any] | None:
-            return transform(self._to_transaction(row))
-
-        self.data.transactions.rewrite(guarded)
+        rows = read(
+            self.data.transactions, Transaction.from_dict, label="거래", strict=True
+        )
+        self.data.transactions.write_all(
+            row for row in map(transform, rows) if row is not None
+        )
 
     def update(self, tx_id: str, changes: dict[str, Any]) -> Transaction:
         if not changes:
@@ -230,18 +207,10 @@ class Ledger:
         맞고 규칙에 어긋난 행이 새 파일에도 그대로 남는다. 덧붙이는 경로라도
         파일 전체를 다시 쓰는 이상 같은 기준을 적용한다.
         """
-        for row in self.data.transactions.stream_strict():
-            yield self._to_transaction(row).to_dict()
-
-    def _to_transaction(self, row: dict[str, Any]) -> Transaction:
-        """쓰기 경로에서는 규칙에 어긋난 행도 손상으로 본다."""
-        try:
-            return Transaction.from_dict(row)
-        except ValidationError as exc:
-            raise StorageError(
-                f"저장된 거래를 읽을 수 없습니다: {exc.message}",
-                f"{self.data.transactions.path} 를 확인하세요.",
-            ) from None
+        for tx in read(
+            self.data.transactions, Transaction.from_dict, label="거래", strict=True
+        ):
+            yield tx.to_dict()
 
     # ── 카테고리 관리 ────────────────────────────────────────────────────
 
@@ -272,45 +241,65 @@ class Ledger:
             raise NotFoundError(
                 f"등록되지 않은 카테고리입니다: {category}", "category list 로 확인하세요."
             )
+        self._reject_if_used_by_rules(category)
 
-        rules_using = self._rules_using(category)
-        if rules_using:
+        if replace_with is None:
+            self._reject_if_used_by_transactions(category)
+            moved = 0
+        else:
+            target = self._resolve_replacement(category, replace_with, registered)
+            moved = self._move_transactions(category, target)
+
+        self.data.categories.write_all(
+            {"name": item} for item in registered if item != category
+        )
+        return moved
+
+    def _reject_if_used_by_rules(self, category: str) -> None:
+        using = self._rules_using(category)
+        if using:
             raise ValidationError(
-                f"'{category}' 를 사용하는 반복 규칙이 {rules_using}개 있습니다.",
+                f"'{category}' 를 사용하는 반복 규칙이 {using}개 있습니다.",
                 "recurring remove 로 규칙을 먼저 정리하세요.",
             )
 
+    def _reject_if_used_by_transactions(self, category: str) -> None:
         used = self.count_by_category(category)
-        if used and replace_with is None:
+        if used:
             raise ValidationError(
                 f"'{category}' 를 사용하는 거래가 {used}건 있습니다.",
                 "--replace-with <카테고리> 로 대체할 카테고리를 지정하세요.",
             )
 
-        if used:
-            target = normalize_category(str(replace_with))
-            if target not in registered:
-                raise NotFoundError(
-                    f"등록되지 않은 카테고리입니다: {target}",
-                    "category list 로 목록을 보거나 category add 로 등록하세요.",
-                )
-            if target == category:
-                raise ValidationError(
-                    "대체 카테고리가 삭제할 카테고리와 같습니다.",
-                    "다른 카테고리를 지정하세요.",
-                )
+    @staticmethod
+    def _resolve_replacement(
+        category: str, replace_with: str, registered: list[str]
+    ) -> str:
+        target = normalize_category(replace_with)
+        if target not in registered:
+            raise NotFoundError(
+                f"등록되지 않은 카테고리입니다: {target}",
+                "category list 로 목록을 보거나 category add 로 등록하세요.",
+            )
+        if target == category:
+            raise ValidationError(
+                "대체 카테고리가 삭제할 카테고리와 같습니다.", "다른 카테고리를 지정하세요."
+            )
+        return target
 
-            def transform(tx: Transaction) -> dict[str, Any]:
-                if tx.category != category:
-                    return tx.to_dict()
-                return replace(tx, category=target).to_dict()
+    def _move_transactions(self, category: str, target: str) -> int:
+        """옮긴 건수는 치환하면서 센다. 세려고 파일을 한 번 더 읽지 않는다."""
+        moved = 0
 
-            self._rewrite(transform)
+        def transform(tx: Transaction) -> dict[str, Any]:
+            nonlocal moved
+            if tx.category != category:
+                return tx.to_dict()
+            moved += 1
+            return replace(tx, category=target).to_dict()
 
-        self.data.categories.write_all(
-            {"name": item} for item in registered if item != category
-        )
-        return used
+        self._rewrite(transform)
+        return moved
 
     def _rules_using(self, category: str) -> int:
         """반복 규칙이 참조하는지 센다.
@@ -333,17 +322,18 @@ class Ledger:
         """
         if not transactions:
             return []
+        # 건마다 require_category 를 부르면 카테고리 파일을 건수만큼 읽는다.
+        registered = set(self.categories())
         for tx in transactions:
-            self.require_category(tx.category)
+            if tx.category not in registered:
+                raise NotFoundError(
+                    f"등록되지 않은 카테고리입니다: {tx.category}",
+                    "category list 로 목록을 보거나 category add 로 등록하세요.",
+                )
         store = self.data.transactions
         rows = [tx.to_dict() for tx in transactions]
-        store.write_all(self._chain(self.strict_rows(), rows))
+        store.write_all(chain(self.strict_rows(), rows))
         return transactions
-
-    @staticmethod
-    def _chain(existing, new_rows):
-        yield from existing
-        yield from new_rows
 
 
 def open_ledger(data_dir: Path) -> tuple[Ledger, list[str]]:

@@ -19,13 +19,16 @@ ALLOWED: dict[str, set[str]] = {
     "storage": {"models"},
     "decorators": {"models"},
     "cli.render": {"models"},
-    "service.ledger": {"models", "storage"},
-    "service.reports": {"models", "storage", "service.ledger"},
-    "service.porting": {"models", "storage", "service.ledger"},
-    "service.recurring": {"models", "storage", "service.ledger"},
+    "cli.parser": set(),
+    "service.reading": {"models", "storage"},
+    "service.ledger": {"models", "storage", "service.reading"},
+    "service.reports": {"models", "storage", "service.reading", "service.ledger"},
+    "service.porting": {"models", "storage", "service.reading", "service.ledger"},
+    "service.recurring": {"models", "storage", "service.reading", "service.ledger"},
     "cli.app": {
         "models",
         "decorators",
+        "cli.parser",
         "cli.render",
         "service.ledger",
         "service.reports",
@@ -92,7 +95,7 @@ class LayerTest(unittest.TestCase):
                 )
 
     def test_cli_does_not_reach_storage_directly(self) -> None:
-        for path in (ROOT / "cli" / "app.py", ROOT / "cli" / "render.py"):
+        for path in (ROOT / "cli").glob("*.py"):
             for target, _ in internal_imports(path):
                 self.assertNotEqual(target, "storage")
 

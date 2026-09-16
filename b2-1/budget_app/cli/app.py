@@ -1,15 +1,15 @@
-"""명령행 파서와 디스패처.
+"""명령 핸들러와 디스패처.
 
-파서 정의는 여기서 완결하고, 각 명령의 동작은 구현 단계에서 붙인다.
+파서 정의는 `parser.py` 에 있다. 여기서는 파싱된 인자를 도메인 값으로
+바꿔 서비스에 넘기고, 결과를 화면에 쓰는 일만 한다.
 """
 
 from __future__ import annotations
 
-import argparse
 import sys
 from argparse import Namespace
-from pathlib import Path
 
+from budget_app.cli.parser import build_parser
 from budget_app.cli.render import format_amount, render_lines, render_table
 from budget_app.decorators import Handler, as_command
 from budget_app.models import (
@@ -29,125 +29,6 @@ from budget_app.service.porting import Porting
 from budget_app.service.recurring import Recurring
 from budget_app.service.reports import Reports
 
-DEFAULT_DATA_DIR = "./data"
-DEFAULT_LIST_LIMIT = 20
-DEFAULT_TOP = 3
-
-
-def _global_options(*, suppress: bool) -> argparse.ArgumentParser:
-    """모든 명령이 공유하는 옵션.
-
-    부모 파서로 붙여 `budget_app --verbose list` 와 `budget_app list --verbose`
-    를 모두 허용한다.
-
-    서브파서에 붙일 때는 기본값을 SUPPRESS로 둔다. 기본값을 그대로 두면
-    서브파서가 파싱할 때 앞쪽에서 이미 받은 값을 기본값으로 덮어써서
-    `--data-dir X list` 가 무시된다.
-    """
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument(
-        "--data-dir",
-        type=Path,
-        default=argparse.SUPPRESS if suppress else Path(DEFAULT_DATA_DIR),
-        help=f"데이터 디렉터리 (기본: {DEFAULT_DATA_DIR})",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        default=argparse.SUPPRESS if suppress else False,
-        help="실행 시간 등 상세 출력",
-    )
-    return parser
-
-
-def build_parser() -> argparse.ArgumentParser:
-    common = _global_options(suppress=True)
-    parser = argparse.ArgumentParser(
-        prog="budget_app",
-        description="콘솔 가계부",
-        parents=[_global_options(suppress=False)],
-    )
-    sub = parser.add_subparsers(dest="command", metavar="<command>")
-
-    sub.add_parser("add", parents=[common], help="거래 추가 (대화형)")
-
-    p_list = sub.add_parser("list", parents=[common], help="거래 목록 (최신순)")
-    p_list.add_argument(
-        "--limit",
-        type=int,
-        default=DEFAULT_LIST_LIMIT,
-        help=f"출력 건수 (기본: {DEFAULT_LIST_LIMIT})",
-    )
-
-    p_search = sub.add_parser("search", parents=[common], help="조건 검색")
-    p_search.add_argument("--from", dest="date_from", metavar="YYYY-MM-DD", help="시작일 (포함)")
-    p_search.add_argument("--to", dest="date_to", metavar="YYYY-MM-DD", help="종료일 (포함)")
-    p_search.add_argument("--category", help="카테고리")
-    p_search.add_argument("--type", choices=("income", "expense"), help="거래 타입")
-    p_search.add_argument("--q", dest="keyword", help="메모 키워드")
-    p_search.add_argument("--tag", help="태그")
-    p_search.add_argument("--limit", type=int, default=DEFAULT_LIST_LIMIT, help="출력 건수")
-
-    p_summary = sub.add_parser("summary", parents=[common], help="월별 요약")
-    p_summary.add_argument("--month", required=True, metavar="YYYY-MM", help="대상 월")
-    p_summary.add_argument(
-        "--top", type=int, default=DEFAULT_TOP, help=f"지출 상위 N개 (기본: {DEFAULT_TOP})"
-    )
-
-    p_budget = sub.add_parser("budget", parents=[common], help="예산 설정·조회")
-    p_budget.set_defaults(group_parser=p_budget)
-    budget_sub = p_budget.add_subparsers(dest="action", metavar="<action>")
-    p_budget_set = budget_sub.add_parser("set", parents=[common], help="월 예산 저장")
-    p_budget_set.add_argument("--month", required=True, metavar="YYYY-MM")
-    p_budget_set.add_argument("--amount", required=True, type=int, help="예산 (양수)")
-    budget_sub.add_parser("list", parents=[common], help="예산 목록")
-
-    p_category = sub.add_parser("category", parents=[common], help="카테고리 관리")
-    p_category.set_defaults(group_parser=p_category)
-    category_sub = p_category.add_subparsers(dest="action", metavar="<action>")
-    category_sub.add_parser("add", parents=[common], help="카테고리 추가 (대화형)")
-    category_sub.add_parser("list", parents=[common], help="카테고리 목록")
-    p_category_remove = category_sub.add_parser("remove", parents=[common], help="카테고리 삭제")
-    p_category_remove.add_argument("--name", required=True, help="삭제할 카테고리")
-    p_category_remove.add_argument(
-        "--replace-with", help="사용 중인 경우 대체할 카테고리"
-    )
-
-    p_update = sub.add_parser("update", parents=[common], help="거래 수정")
-    p_update.add_argument("--id", dest="tx_id", required=True, help="거래 id")
-    p_update.add_argument("--date", metavar="YYYY-MM-DD")
-    p_update.add_argument("--type", choices=("income", "expense"))
-    p_update.add_argument("--category")
-    p_update.add_argument("--amount", type=int)
-    p_update.add_argument("--memo", help='빈 문자열("")이면 메모를 지운다')
-    p_update.add_argument("--tags", help='쉼표 구분. 빈 문자열("")이면 태그를 지운다')
-
-    p_delete = sub.add_parser("delete", parents=[common], help="거래 삭제")
-    p_delete.add_argument("--id", dest="tx_id", required=True, help="거래 id")
-
-    p_export = sub.add_parser("export", parents=[common], help="CSV 내보내기")
-    p_export.add_argument("--out", required=True, type=Path, help="출력 CSV 경로")
-    p_export.add_argument("--month", metavar="YYYY-MM")
-    p_export.add_argument("--from", dest="date_from", metavar="YYYY-MM-DD")
-    p_export.add_argument("--to", dest="date_to", metavar="YYYY-MM-DD")
-
-    p_import = sub.add_parser("import", parents=[common], help="CSV 가져오기")
-    p_import.add_argument("--from", dest="src", required=True, type=Path, help="입력 CSV 경로")
-
-    sub.add_parser("backup", parents=[common], help="데이터 파일 백업")
-
-    p_recurring = sub.add_parser("recurring", parents=[common], help="반복 내역 관리")
-    p_recurring.set_defaults(group_parser=p_recurring)
-    recurring_sub = p_recurring.add_subparsers(dest="action", metavar="<action>")
-    recurring_sub.add_parser("add", parents=[common], help="반복 규칙 추가 (대화형)")
-    recurring_sub.add_parser("list", parents=[common], help="반복 규칙 목록")
-    p_recurring_remove = recurring_sub.add_parser("remove", parents=[common], help="반복 규칙 삭제")
-    p_recurring_remove.add_argument("--id", dest="rule_id", required=True, help="규칙 id")
-    p_recurring_apply = recurring_sub.add_parser("apply", parents=[common], help="해당 월에 적용")
-    p_recurring_apply.add_argument("--month", required=True, metavar="YYYY-MM")
-
-    return parser
-
 
 # ── 공통 ──────────────────────────────────────────────────────────────────
 
@@ -160,17 +41,23 @@ _MEMO_MAX_WIDTH = 24
 def _open_ledger(ctx: Context) -> Ledger:
     ledger, seeded = open_ledger(ctx.data_dir)
     if seeded:
-        print(
+        _warn(
             "[안내] 데이터 디렉터리를 만들고 기본 카테고리를 등록했습니다: "
-            + ", ".join(seeded),
-            file=sys.stderr,
+            + ", ".join(seeded)
         )
     return ledger
 
 
-def _report_warnings(ledger: Ledger) -> None:
-    for warning in ledger.warnings:
-        print(warning, file=sys.stderr)
+def _warn(*lines: str) -> None:
+    """경고와 안내는 stdout 을 더럽히지 않도록 stderr 로 보낸다."""
+    for line in lines:
+        print(line, file=sys.stderr)
+
+
+def _report_warnings(*sources: object) -> None:
+    """서비스가 모아 둔 손상 행 경고를 내보낸다."""
+    for source in sources:
+        _warn(*getattr(source, "warnings", ()))
 
 
 def _print_transactions(rows: list[Transaction]) -> None:
@@ -212,9 +99,7 @@ def _ask(label: str, parse, *, optional: bool = False):
         try:
             return parse(raw)
         except AppError as exc:
-            print(f"[오류] {exc.message}", file=sys.stderr)
-            if exc.hint:
-                print(f"[힌트] {exc.hint}", file=sys.stderr)
+            _warn(f"[오류] {exc.message}", *( [f"[힌트] {exc.hint}"] if exc.hint else [] ))
     raise ValidationError(
         f"{label} 입력을 {MAX_INPUT_ATTEMPTS}회 확인하지 못해 중단합니다.",
         "값을 확인한 뒤 다시 실행하세요.",
@@ -439,51 +324,57 @@ def cmd_backup(ctx: Context, args: Namespace) -> int:
 def cmd_recurring(ctx: Context, args: Namespace) -> int:
     ledger = _open_ledger(ctx)
     recurring = Recurring(ledger)
+    actions = {
+        "list": _recurring_list,
+        "add": _recurring_add,
+        "remove": _recurring_remove,
+        "apply": _recurring_apply,
+    }
+    return actions[args.action](recurring, ledger, args)
 
-    if args.action == "list":
-        rules = recurring.rules()
-        _report_warnings(ledger)
-        for warning in recurring.warnings:
-            print(warning, file=sys.stderr)
-        if not rules:
-            print("[안내] 등록된 반복 규칙이 없습니다.")
-            return 0
-        print(
-            render_table(
-                ("id", "이름", "일자", "타입", "카테고리", "금액"),
-                [
-                    [r.id, r.name, str(r.day), r.type, r.category, format_amount(r.amount)]
-                    for r in rules
-                ],
-                ("left", "left", "right", "left", "left", "right"),
-            )
+
+def _recurring_list(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
+    rules = recurring.rules()
+    _report_warnings(ledger, recurring)
+    if not rules:
+        print("[안내] 등록된 반복 규칙이 없습니다.")
+        return 0
+    print(
+        render_table(
+            ("id", "이름", "일자", "타입", "카테고리", "금액"),
+            [
+                [r.id, r.name, str(r.day), r.type, r.category, format_amount(r.amount)]
+                for r in rules
+            ],
+            ("left", "left", "right", "left", "left", "right"),
         )
-        return 0
+    )
+    return 0
 
-    if args.action == "add":
-        name = _ask("규칙 이름", lambda raw: raw.strip() or _blank("규칙 이름"))
-        day = _ask("일자(1-31)", _parse_day)
-        tx_type = _ask("타입(income/expense)", parse_type)
-        category = _ask("카테고리", ledger.require_category)
-        amount = _ask("금액(양수)", parse_amount)
-        memo = _ask("메모(선택)", lambda raw: raw.strip(), optional=True)
-        tags = _ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True)
-        rule = recurring.create(
-            name=name, day=day, type=tx_type, category=category,
-            amount=amount, memo=memo, tags=tags,
-        )
-        print(f"[저장 완료] id={rule.id} {rule.name} 매월 {rule.day}일")
-        return 0
 
-    if args.action == "remove":
-        rule = recurring.remove(args.rule_id)
-        print(f"[삭제 완료] id={rule.id} {rule.name}")
-        return 0
+def _recurring_add(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
+    rule = recurring.create(
+        name=_ask("규칙 이름", _require_text("규칙 이름")),
+        day=_ask("일자(1-31)", _parse_day),
+        type=_ask("타입(income/expense)", parse_type),
+        category=_ask("카테고리", ledger.require_category),
+        amount=_ask("금액(양수)", parse_amount),
+        memo=_ask("메모(선택)", lambda raw: raw.strip(), optional=True),
+        tags=_ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True),
+    )
+    print(f"[저장 완료] id={rule.id} {rule.name} 매월 {rule.day}일")
+    return 0
 
+
+def _recurring_remove(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
+    rule = recurring.remove(args.rule_id)
+    print(f"[삭제 완료] id={rule.id} {rule.name}")
+    return 0
+
+
+def _recurring_apply(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
     created = recurring.apply(args.month)
-    _report_warnings(ledger)
-    for warning in recurring.warnings:
-        print(warning, file=sys.stderr)
+    _report_warnings(ledger, recurring)
     if not created:
         print(f"[안내] {args.month} 에 새로 생성할 반복 내역이 없습니다.")
         return 0
@@ -492,8 +383,16 @@ def cmd_recurring(ctx: Context, args: Namespace) -> int:
     return 0
 
 
-def _blank(label: str):
-    raise ValidationError(f"{label}은(는) 비어 있을 수 없습니다.", "값을 입력하세요.")
+def _require_text(label: str):
+    """비어 있으면 거부하는 입력 변환기."""
+
+    def parse(raw: str) -> str:
+        text = raw.strip()
+        if not text:
+            raise ValidationError(f"{label}은(는) 비어 있을 수 없습니다.", "값을 입력하세요.")
+        return text
+
+    return parse
 
 
 def _parse_day(raw: str) -> int:
