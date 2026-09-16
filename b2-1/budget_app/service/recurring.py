@@ -19,7 +19,7 @@ from budget_app.models import (
     parse_month,
 )
 from budget_app.service.ledger import Ledger
-from budget_app.storage import describe_corruption
+from budget_app.service.reading import read
 
 
 class Recurring:
@@ -31,34 +31,16 @@ class Recurring:
     # ── 규칙 ────────────────────────────────────────────────────────────
 
     def rules(self, strict: bool = False) -> list[RecurringRule]:
-        """규칙 목록.
-
-        조회는 손상 행을 건너뛰지만, 파일을 다시 쓰는 경로에서는 중단한다.
-        건너뛴 채 저장하면 읽지 못한 규칙이 사라진다.
-        """
-        items: list[RecurringRule] = []
-        if strict:
-            for row in self.data.recurring.stream_strict():
-                try:
-                    items.append(RecurringRule.from_dict(row))
-                except ValidationError as exc:
-                    raise StorageError(
-                        f"저장된 반복 규칙을 읽을 수 없습니다: {exc.message}",
-                        f"{self.data.recurring.path} 를 확인하세요.",
-                    ) from None
-            return items
-
-        corrupt: list[int] = []
-        for line_no, row in self.data.recurring.stream_numbered(corrupt):
-            try:
-                items.append(RecurringRule.from_dict(row))
-            except ValidationError:
-                corrupt.append(line_no)
-        if corrupt:
-            self.warnings.append(
-                describe_corruption(self.data.recurring.path, sorted(corrupt))
+        """반복 규칙 목록."""
+        return list(
+            read(
+                self.data.recurring,
+                RecurringRule.from_dict,
+                label="반복 규칙",
+                strict=strict,
+                warnings=self.warnings,
             )
-        return items
+        )
 
     def add(self, rule: RecurringRule) -> RecurringRule:
         self.ledger.require_category(rule.category)
@@ -105,17 +87,22 @@ class Recurring:
     # ── 적용 ────────────────────────────────────────────────────────────
 
     def applied_sources(self) -> set[str]:
-        """이미 생성된 거래의 출처. 중복이 있으면 유일키가 깨진 것이므로 멈춘다."""
+        """이미 생성된 거래의 출처. 중복이 있으면 유일키가 깨진 것이므로 멈춘다.
+
+        적용은 쓰기 경로이므로 조회와 달리 손상 행을 건너뛰지 않는다. 건너뛴
+        행에 출처가 들어 있으면 이미 만든 거래를 또 만들게 된다.
+        """
         seen: set[str] = set()
-        for tx in self.ledger.stream_transactions():
-            if tx.source is None:
+        for row in self.ledger.strict_rows():
+            source = row.get("source")
+            if source is None:
                 continue
-            if tx.source in seen:
+            if source in seen:
                 raise StorageError(
-                    f"같은 출처의 거래가 두 건 이상 있습니다: {tx.source}",
+                    f"같은 출처의 거래가 두 건 이상 있습니다: {source}",
                     "중복된 거래를 정리한 뒤 다시 실행하세요.",
                 )
-            seen.add(tx.source)
+            seen.add(source)
         return seen
 
     def apply(self, month: str) -> list[Transaction]:

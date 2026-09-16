@@ -11,8 +11,9 @@ import csv
 import os
 import tempfile
 from dataclasses import dataclass, field
+from itertools import chain
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from budget_app.models import (
     AppError,
@@ -145,14 +146,9 @@ class Porting:
 
         if prepared:
             store = self.data.transactions
-            store.write_all(self._chain(self.ledger.strict_rows(), prepared))
+            store.write_all(chain(self.ledger.strict_rows(), prepared))
         result.imported = len(prepared)
         return result
-
-    @staticmethod
-    def _chain(existing: Iterator[dict[str, Any]], new_rows: list[dict[str, Any]]):
-        yield from existing
-        yield from new_rows
 
     def _check_header(self, src: Path, fieldnames: list[str] | None) -> None:
         missing = [c for c in REQUIRED_COLUMNS if c not in (fieldnames or [])]

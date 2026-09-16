@@ -8,15 +8,13 @@ from __future__ import annotations
 
 from budget_app.models import (
     Budget,
-    StorageError,
     MonthlySummary,
     Query,
-    ValidationError,
     parse_amount,
     parse_month,
 )
 from budget_app.service.ledger import Ledger
-from budget_app.storage import describe_corruption
+from budget_app.service.reading import read
 
 
 class Reports:
@@ -29,36 +27,16 @@ class Reports:
     # ── 예산 ────────────────────────────────────────────────────────────
 
     def budgets(self, strict: bool = False) -> list[Budget]:
-        """예산 목록.
-
-        조회는 손상 행을 건너뛴다. 하지만 파일을 다시 쓰는 경로에서 그렇게 하면
-        읽지 못한 행이 새 파일에서 사라지므로, 그때는 strict 로 읽어 중단한다.
-        """
+        """월별 예산. 같은 달이 여러 번 나오면 마지막 값을 쓴다."""
         items: dict[str, Budget] = {}
-        if strict:
-            for row in self.data.budgets.stream_strict():
-                try:
-                    budget = Budget.from_dict(row)
-                except ValidationError as exc:
-                    raise StorageError(
-                        f"저장된 예산을 읽을 수 없습니다: {exc.message}",
-                        f"{self.data.budgets.path} 를 확인하세요.",
-                    ) from None
-                items[budget.month] = budget
-            return [items[month] for month in sorted(items)]
-
-        corrupt: list[int] = []
-        for line_no, row in self.data.budgets.stream_numbered(corrupt):
-            try:
-                budget = Budget.from_dict(row)
-            except ValidationError:
-                corrupt.append(line_no)
-                continue
+        for budget in read(
+            self.data.budgets,
+            Budget.from_dict,
+            label="예산",
+            strict=strict,
+            warnings=self.ledger.warnings,
+        ):
             items[budget.month] = budget
-        if corrupt:
-            self.ledger.warnings.append(
-                describe_corruption(self.data.budgets.path, sorted(corrupt))
-            )
         return [items[month] for month in sorted(items)]
 
     def budget_for(self, month: str) -> int | None:
