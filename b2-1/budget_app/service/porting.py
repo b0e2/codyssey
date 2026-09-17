@@ -1,4 +1,4 @@
-"""CSV 가져오기·내보내기.
+"""외부 파일과 주고받는 작업 — CSV 입출력, 백업, 복구.
 
 저장은 JSONL 이지만 교환은 CSV 로 한다. 스프레드시트와 주고받으려면
 사람이 열어볼 수 있는 포맷이 필요하고, 그 대신 태그 배열 같은 구조는
@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import os
 import tempfile
 from dataclasses import dataclass, field
@@ -15,23 +16,40 @@ from itertools import chain
 from pathlib import Path
 from typing import Any
 
-from budget_app.models import (
-    AppError,
-    Query,
-    StorageError,
-    Transaction,
-    ValidationError,
+from budget_app.errors import AppError, StorageError, ValidationError
+from budget_app.validators import (
     format_tx_id,
+    normalize_category,
     parse_amount,
     parse_date,
     parse_tags,
     parse_type,
 )
+from budget_app.models import Budget, Query, RecurringRule, Transaction
 from budget_app.service.ledger import Ledger
 from budget_app.storage import io_guard
 
 CSV_COLUMNS = ("date", "type", "category", "amount", "memo", "tags")
 REQUIRED_COLUMNS = ("date", "type", "category", "amount")
+
+
+@dataclass
+class RepairReport:
+    """파일별로 격리한 행 수."""
+
+    moved: dict[str, int] = field(default_factory=dict)
+    destination: Path | None = None
+
+    @property
+    def total(self) -> int:
+        return sum(self.moved.values())
+
+
+def _category_row(row: dict[str, Any]) -> str:
+    name = row.get("name")
+    if not isinstance(name, str):
+        raise ValidationError("카테고리 이름이 문자열이 아닙니다.")
+    return normalize_category(name)
 
 
 @dataclass
@@ -146,7 +164,7 @@ class Porting:
 
         if prepared:
             store = self.data.transactions
-            store.write_all(chain(self.ledger.strict_rows(), prepared))
+            store.write_all(chain(self.ledger.rows(), prepared))
         result.imported = len(prepared)
         return result
 
@@ -194,3 +212,51 @@ class Porting:
         남겨야 나중에 손으로 고칠 수 있다.
         """
         return self.data.backup()
+
+    # ── 복구 ────────────────────────────────────────────────────────────
+
+    def repair(self) -> RepairReport:
+        """읽을 수 없는 행을 격리하고 정상 행만 남긴다.
+
+        지우지 않고 옮긴다. 손으로 고쳐 되돌릴 수 있어야 하고, 무엇이 빠졌는지
+        확인할 수 있어야 한다.
+        """
+        builders: dict[str, Any] = {
+            self.data.transactions.path.name: Transaction.from_dict,
+            self.data.categories.path.name: _category_row,
+            self.data.budgets.path.name: Budget.from_dict,
+            self.data.recurring.path.name: RecurringRule.from_dict,
+        }
+        report = RepairReport()
+        dest = self.data.quarantine_dir()
+
+        for store in self.data.stores:
+            build = builders[store.path.name]
+            healthy: list[dict[str, Any]] = []
+            broken: list[str] = []
+            for _, text in store.iter_lines():
+                try:
+                    row = json.loads(text)
+                    if not isinstance(row, dict):
+                        raise ValueError
+                    build(row)
+                except (json.JSONDecodeError, ValueError, ValidationError):
+                    broken.append(text)
+                else:
+                    healthy.append(row)
+
+            if not broken:
+                continue
+            self._quarantine(dest, store.path.name, broken)
+            store.write_all(healthy)
+            report.moved[store.path.name] = len(broken)
+
+        if report.moved:
+            report.destination = dest
+        return report
+
+    @staticmethod
+    def _quarantine(dest: Path, name: str, lines: list[str]) -> None:
+        with io_guard(dest, "저장"):
+            dest.mkdir(parents=True, exist_ok=True)
+            (dest / name).write_text("\n".join(lines) + "\n", encoding="utf-8")

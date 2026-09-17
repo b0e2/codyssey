@@ -10,7 +10,8 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 from budget_app.decorators import as_command, handle_errors, log_call, timed
-from budget_app.models import Context, NotFoundError, ValidationError
+from budget_app.errors import NotFoundError, ValidationError
+from budget_app.models import Context
 
 
 class DecoratorTestCase(unittest.TestCase):

@@ -6,18 +6,9 @@
 
 from __future__ import annotations
 
-from budget_app.models import (
-    NotFoundError,
-    Transaction as _Transaction,
-    RecurringRule,
-    StorageError,
-    Transaction,
-    ValidationError,
-    clamp_day,
-    format_tx_id,
-    new_rule_id,
-    parse_month,
-)
+from budget_app.errors import NotFoundError, StorageError, ValidationError
+from budget_app.validators import clamp_day, format_tx_id, new_rule_id, parse_month
+from budget_app.models import RecurringRule, Transaction, Transaction
 from budget_app.service.ledger import Ledger
 from budget_app.service.reading import read
 
@@ -30,17 +21,9 @@ class Recurring:
 
     # ── 규칙 ────────────────────────────────────────────────────────────
 
-    def rules(self, strict: bool = False) -> list[RecurringRule]:
+    def rules(self) -> list[RecurringRule]:
         """반복 규칙 목록."""
-        return list(
-            read(
-                self.data.recurring,
-                RecurringRule.from_dict,
-                label="반복 규칙",
-                strict=strict,
-                warnings=self.warnings,
-            )
-        )
+        return list(read(self.data.recurring, RecurringRule.from_dict, label="반복 규칙"))
 
     def add(self, rule: RecurringRule) -> RecurringRule:
         self.ledger.require_category(rule.category)
@@ -72,7 +55,7 @@ class Recurring:
         )
 
     def remove(self, rule_id: str) -> RecurringRule:
-        remaining = self.rules(strict=True)
+        remaining = self.rules()
         target = next((r for r in remaining if r.id == rule_id), None)
         if target is None:
             raise NotFoundError(
@@ -89,11 +72,9 @@ class Recurring:
     def applied_sources(self) -> set[str]:
         """이미 생성된 거래의 출처. 중복이 있으면 유일키가 깨진 것이므로 멈춘다.
 
-        적용은 쓰기 경로이므로 조회와 달리 손상 행을 건너뛰지 않는다. 건너뛴
-        행에 출처가 들어 있으면 이미 만든 거래를 또 만들게 된다.
         """
         seen: set[str] = set()
-        for row in self.ledger.strict_rows():
+        for row in self.ledger.rows():
             source = row.get("source")
             if source is None:
                 continue
@@ -127,7 +108,7 @@ class Recurring:
                 )
                 continue
             created.append(
-                _Transaction(
+                Transaction(
                     id=format_tx_id(next_seq),
                     date=clamp_day(target, rule.day),
                     type=rule.type,

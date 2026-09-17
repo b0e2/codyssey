@@ -17,10 +17,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 
-from budget_app.models import StorageError
+from budget_app.errors import StorageError
 
 DEFAULT_CATEGORIES = ("food", "transport", "rent", "salary", "etc")
-_MAX_REPORTED_LINES = 10
 _TAIL_BLOCK = 4096
 
 
@@ -57,10 +56,6 @@ def _reading(path: Path):
             fp.close()
 
 
-def _corruption_hint(path: Path, line_no: int) -> str:
-    return f"{path} 의 {line_no}번째 줄을 확인하세요."
-
-
 @dataclass(frozen=True)
 class JsonlStore:
     """한 JSONL 파일에 대한 읽기·쓰기.
@@ -72,22 +67,11 @@ class JsonlStore:
 
     # ── 읽기 ────────────────────────────────────────────────────────────
 
-    def stream(self, corrupt_lines: list[int] | None = None) -> Iterator[dict[str, Any]]:
-        for _, row in self.stream_numbered(corrupt_lines):
-            yield row
-
-    def stream_numbered(
-        self, corrupt_lines: list[int] | None = None
-    ) -> Iterator[tuple[int, dict[str, Any]]]:
+    def stream(self) -> Iterator[dict[str, Any]]:
         """행을 하나씩 흘린다. 파일 전체를 메모리에 올리지 않는다.
 
-        손상된 행은 건너뛰고, 줄 번호를 `corrupt_lines` 에 모은다. 저장소 전용
-        리포트 타입을 만들지 않고 int 목록을 받는 이유는, 그 타입이 서비스와
-        CLI 까지 올라가면 계층 경계가 흐려지기 때문이다.
-
-        줄 번호를 함께 내보내는 이유는, 서비스가 모델 검증에 실패한 행을
-        기록할 때도 실제 파일 위치를 써야 하기 때문이다. 세어 가며 매기면
-        앞에 있는 빈 줄이나 깨진 줄만큼 어긋난다.
+        읽을 수 없는 행을 만나면 멈춘다. 조회든 재작성이든 같은 기준이라,
+        일부만 보여주거나 일부만 저장하는 상태가 생기지 않는다.
         """
         if not self.path.exists():
             return
@@ -96,44 +80,29 @@ class JsonlStore:
                 text = line.strip()
                 if not text:
                     continue
-                try:
-                    row = json.loads(text)
-                except json.JSONDecodeError:
-                    if corrupt_lines is not None:
-                        corrupt_lines.append(line_no)
-                    continue
-                if not isinstance(row, dict):
-                    if corrupt_lines is not None:
-                        corrupt_lines.append(line_no)
-                    continue
-                yield line_no, row
+                yield self._decode(line_no, text)
 
-    def stream_strict(self) -> Iterator[dict[str, Any]]:
-        """손상 행을 만나면 즉시 중단한다.
-
-        파일을 통째로 다시 쓰는 경로에서 쓴다. 손상 행을 건너뛴 채 재작성하면
-        읽지 못한 원본 데이터가 조용히 사라진다.
-        """
+    def iter_lines(self) -> Iterator[tuple[int, str]]:
+        """줄 번호와 원문. 복구 명령이 손상 행을 그대로 옮길 때 쓴다."""
         if not self.path.exists():
             return
         with _reading(self.path) as fp:
             for line_no, line in enumerate(fp, start=1):
                 text = line.strip()
-                if not text:
-                    continue
-                try:
-                    row = json.loads(text)
-                except json.JSONDecodeError:
-                    raise StorageError(
-                        f"손상된 데이터가 있어 작업을 중단했습니다 ({self.path.name} {line_no}번째 줄).",
-                        _corruption_hint(self.path, line_no),
-                    ) from None
-                if not isinstance(row, dict):
-                    raise StorageError(
-                        f"손상된 데이터가 있어 작업을 중단했습니다 ({self.path.name} {line_no}번째 줄).",
-                        _corruption_hint(self.path, line_no),
-                    )
-                yield row
+                if text:
+                    yield line_no, text
+
+    def _decode(self, line_no: int, text: str) -> dict[str, Any]:
+        try:
+            row = json.loads(text)
+        except json.JSONDecodeError:
+            row = None
+        if not isinstance(row, dict):
+            raise StorageError(
+                f"{self.path.name} 의 {line_no}번째 줄을 읽을 수 없습니다.",
+                f"repair 명령으로 정리하거나 해당 줄을 고친 뒤 다시 실행하세요.",
+            )
+        return row
 
     def last_row(self) -> dict[str, Any] | None:
         """마지막 행. 파일 크기와 무관하게 끝에서부터만 읽는다.
@@ -255,7 +224,7 @@ class JsonlStore:
     def rewrite(self, transform: Callable[[dict[str, Any]], dict[str, Any] | None]) -> int:
         """모든 행에 `transform` 을 적용해 다시 쓴다. None 을 돌려준 행은 삭제된다."""
         return self.write_all(
-            row for row in map(transform, self.stream_strict()) if row is not None
+            row for row in map(transform, self.stream()) if row is not None
         )
 
     def _fsync_dir(self) -> None:
@@ -279,14 +248,6 @@ class JsonlStore:
             dest = dest_dir / self.path.name
             shutil.copy2(self.path, dest)
             return dest
-
-
-def describe_corruption(path: Path, corrupt_lines: list[int]) -> str:
-    """건너뛴 손상 행 경고 문구. 손상이 많아도 stderr 가 넘치지 않게 앞쪽만 보인다."""
-    shown = ", ".join(str(n) for n in corrupt_lines[:_MAX_REPORTED_LINES])
-    rest = len(corrupt_lines) - _MAX_REPORTED_LINES
-    tail = f" 외 {rest}개" if rest > 0 else ""
-    return f"[경고] {path.name} 의 손상된 행 {len(corrupt_lines)}개를 건너뛰었습니다 (줄: {shown}{tail})."
 
 
 @dataclass(frozen=True)
@@ -345,6 +306,10 @@ class DataDir:
         except OSError:
             return False
         return any(store.path.resolve() == resolved for store in self.stores)
+
+    def quarantine_dir(self, label: str | None = None) -> Path:
+        stamp = label or datetime.now().strftime("%Y%m%d-%H%M%S")
+        return self.root / "quarantine" / stamp
 
     def backup(self, label: str | None = None) -> Path:
         """저장 파일을 타임스탬프 디렉터리에 복사한다.

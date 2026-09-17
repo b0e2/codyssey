@@ -8,13 +8,9 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from budget_app.models import (
-    NotFoundError,
-    Transaction,
-    Query,
-    StorageError,
-    ValidationError,
-)
+from budget_app.errors import NotFoundError, StorageError, ValidationError
+from budget_app.models import Query, Transaction
+from budget_app.service.categories import Categories
 from budget_app.service.ledger import Ledger
 from budget_app.storage import DataDir
 
@@ -118,20 +114,22 @@ class SearchTest(LedgerTestCase):
 
 
 class CorruptionTest(LedgerTestCase):
-    def test_corrupt_rows_are_skipped_with_a_warning(self) -> None:
+    """읽을 수 없는 행을 만나면 조회도 멈춘다. 일부만 보여주지 않는다."""
+
+    def test_unreadable_json_stops_the_query(self) -> None:
         self.add("2024-01-10")
         with self.data.transactions.path.open("a", encoding="utf-8") as fp:
             fp.write("broken\n")
-            fp.write(json.dumps({"id": "TX-000002", "type": "expense"}) + "\n")
-        ledger = self.ledger()
-        rows = ledger.search(Query(), 10)
-        self.assertEqual(len(rows), 1)
-        self.assertTrue(ledger.warnings)
-        self.assertIn("건너뛰었습니다", ledger.warnings[0])
+        with self.assertRaises(StorageError):
+            self.ledger().search(Query(), 10)
 
-    def test_reading_never_fails_on_corruption(self) -> None:
-        self.data.transactions.path.write_text("broken\n", encoding="utf-8")
-        self.assertEqual(self.ledger().search(Query(), 10), [])
+    def test_row_breaking_the_rules_stops_the_query(self) -> None:
+        self.add("2024-01-10")
+        with self.data.transactions.path.open("a", encoding="utf-8") as fp:
+            fp.write(json.dumps({"id": "TX-000002", "type": "expense"}) + "\n")
+        with self.assertRaises(StorageError) as ctx:
+            self.ledger().search(Query(), 10)
+        self.assertIn("repair", ctx.exception.hint)
 
 
 class UpdateTest(LedgerTestCase):
@@ -206,33 +204,33 @@ class DeleteTest(LedgerTestCase):
 
 class CategoryManagementTest(LedgerTestCase):
     def test_add_and_normalize(self) -> None:
-        self.assertEqual(self.ledger().add_category("  hobby "), "hobby")
+        self.assertEqual(Categories(self.ledger()).add("  hobby "), "hobby")
         self.assertIn("hobby", self.ledger().categories())
 
     def test_duplicate_is_rejected(self) -> None:
         with self.assertRaises(ValidationError):
-            self.ledger().add_category("food")
+            Categories(self.ledger()).add("food")
 
     def test_remove_unused(self) -> None:
-        moved = self.ledger().remove_category("rent")
+        moved = Categories(self.ledger()).remove("rent")
         self.assertEqual(moved, 0)
         self.assertNotIn("rent", self.ledger().categories())
 
     def test_remove_unknown(self) -> None:
         with self.assertRaises(NotFoundError):
-            self.ledger().remove_category("nope")
+            Categories(self.ledger()).remove("nope")
 
     def test_remove_in_use_requires_replacement(self) -> None:
         self.add("2024-01-10")
         with self.assertRaises(ValidationError) as ctx:
-            self.ledger().remove_category("food")
+            Categories(self.ledger()).remove("food")
         self.assertIn("1건", ctx.exception.message)
         self.assertIn("food", self.ledger().categories())
 
     def test_remove_in_use_moves_transactions(self) -> None:
         self.add("2024-01-10")
         self.add("2024-01-11")
-        moved = self.ledger().remove_category("food", "etc")
+        moved = Categories(self.ledger()).remove("food", "etc")
         self.assertEqual(moved, 2)
         self.assertNotIn("food", self.ledger().categories())
         self.assertEqual(
@@ -242,18 +240,18 @@ class CategoryManagementTest(LedgerTestCase):
     def test_replacement_must_exist(self) -> None:
         self.add("2024-01-10")
         with self.assertRaises(NotFoundError):
-            self.ledger().remove_category("food", "nope")
+            Categories(self.ledger()).remove("food", "nope")
 
     def test_replacement_cannot_be_itself(self) -> None:
         self.add("2024-01-10")
         with self.assertRaises(ValidationError):
-            self.ledger().remove_category("food", "food")
+            Categories(self.ledger()).remove("food", "food")
 
     def test_transactions_are_committed_before_category_is_dropped(self) -> None:
         # 참조를 없앨 때는 참조하는 쪽을 먼저 바꾼다. 중간에 실패해도
         # 등록되지 않은 카테고리를 가리키는 거래가 생기지 않는다.
         self.add("2024-01-10")
-        self.ledger().remove_category("food", "etc")
+        Categories(self.ledger()).remove("food", "etc")
         categories = self.ledger().categories()
         for tx in self.ledger().search(Query(), 10):
             self.assertIn(tx.category, categories)

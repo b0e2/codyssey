@@ -8,7 +8,8 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from budget_app.models import Query, StorageError, ValidationError
+from budget_app.errors import StorageError, ValidationError
+from budget_app.models import Query
 from budget_app.service.ledger import Ledger
 from budget_app.service.porting import CSV_COLUMNS, Porting
 from budget_app.storage import DataDir

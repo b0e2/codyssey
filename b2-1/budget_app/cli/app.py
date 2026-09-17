@@ -6,24 +6,28 @@
 
 from __future__ import annotations
 
-import sys
 from argparse import Namespace
 
 from budget_app.cli.parser import build_parser
-from budget_app.cli.render import format_amount, render_lines, render_table
+from budget_app.cli.prompts import ask, parse_day, require_text
+from budget_app.cli.render import (
+    format_amount,
+    print_transactions,
+    render_lines,
+    render_table,
+    warn,
+)
 from budget_app.decorators import Handler, as_command
-from budget_app.models import (
-    AppError,
-    Context,
-    Query,
-    Transaction,
-    ValidationError,
+from budget_app.errors import AppError, ValidationError
+from budget_app.validators import (
     normalize_category,
     parse_amount,
     parse_date,
     parse_tags,
     parse_type,
 )
+from budget_app.models import Context, Query, Transaction
+from budget_app.service.categories import Categories
 from budget_app.service.ledger import Ledger, open_ledger
 from budget_app.service.porting import Porting
 from budget_app.service.recurring import Recurring
@@ -32,78 +36,16 @@ from budget_app.service.reports import Reports
 
 # ── 공통 ──────────────────────────────────────────────────────────────────
 
-MAX_INPUT_ATTEMPTS = 3
-_TABLE_HEADERS = ("id", "날짜", "타입", "카테고리", "금액", "메모", "태그")
-_TABLE_ALIGNS = ("left", "left", "left", "left", "right", "left", "left")
-_MEMO_MAX_WIDTH = 24
 
 
 def _open_ledger(ctx: Context) -> Ledger:
     ledger, seeded = open_ledger(ctx.data_dir)
     if seeded:
-        _warn(
+        warn(
             "[안내] 데이터 디렉터리를 만들고 기본 카테고리를 등록했습니다: "
             + ", ".join(seeded)
         )
     return ledger
-
-
-def _warn(*lines: str) -> None:
-    """경고와 안내는 stdout 을 더럽히지 않도록 stderr 로 보낸다."""
-    for line in lines:
-        print(line, file=sys.stderr)
-
-
-def _report_warnings(*sources: object) -> None:
-    """서비스가 모아 둔 손상 행 경고를 내보낸다."""
-    for source in sources:
-        _warn(*getattr(source, "warnings", ()))
-
-
-def _print_transactions(rows: list[Transaction]) -> None:
-    if not rows:
-        print("[안내] 조건에 맞는 거래가 없습니다.")
-        return
-    table = render_table(
-        _TABLE_HEADERS,
-        [
-            [
-                tx.id,
-                tx.date.isoformat(),
-                tx.type,
-                tx.category,
-                format_amount(tx.amount),
-                tx.memo,
-                ",".join(tx.tags),
-            ]
-            for tx in rows
-        ],
-        _TABLE_ALIGNS,
-        max_widths=[0, 0, 0, 0, 0, _MEMO_MAX_WIDTH, 0],
-    )
-    print(table)
-    print(f"\n총 {len(rows)}건")
-
-
-def _ask(label: str, parse, *, optional: bool = False):
-    """값 하나를 받는다. 형식이 틀리면 원인을 보여주고 다시 묻는다."""
-    for _ in range(MAX_INPUT_ATTEMPTS):
-        try:
-            raw = input(f"{label}: ")
-        except EOFError:
-            raise ValidationError(
-                "입력이 중단되었습니다.", "대화형 입력이 필요한 명령입니다."
-            ) from None
-        if optional and not raw.strip():
-            return parse("")
-        try:
-            return parse(raw)
-        except AppError as exc:
-            _warn(f"[오류] {exc.message}", *( [f"[힌트] {exc.hint}"] if exc.hint else [] ))
-    raise ValidationError(
-        f"{label} 입력을 {MAX_INPUT_ATTEMPTS}회 확인하지 못해 중단합니다.",
-        "값을 확인한 뒤 다시 실행하세요.",
-    )
 
 
 def _build_query(args: Namespace) -> Query:
@@ -123,12 +65,12 @@ def _build_query(args: Namespace) -> Query:
 @as_command
 def cmd_add(ctx: Context, args: Namespace) -> int:
     ledger = _open_ledger(ctx)
-    date = _ask("날짜(YYYY-MM-DD)", parse_date)
-    tx_type = _ask("타입(income/expense)", parse_type)
-    category = _ask("카테고리", ledger.require_category)
-    amount = _ask("금액(양수)", parse_amount)
-    memo = _ask("메모(선택)", lambda raw: raw.strip(), optional=True)
-    tags = _ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True)
+    date = ask("날짜(YYYY-MM-DD)", parse_date)
+    tx_type = ask("타입(income/expense)", parse_type)
+    category = ask("카테고리", ledger.require_category)
+    amount = ask("금액(양수)", parse_amount)
+    memo = ask("메모(선택)", lambda raw: raw.strip(), optional=True)
+    tags = ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True)
 
     tx = ledger.create(
         date=date, type=tx_type, category=category, amount=amount, memo=memo, tags=tags
@@ -141,8 +83,7 @@ def cmd_add(ctx: Context, args: Namespace) -> int:
 def cmd_list(ctx: Context, args: Namespace) -> int:
     ledger = _open_ledger(ctx)
     rows = ledger.search(Query(), args.limit)
-    _report_warnings(ledger)
-    _print_transactions(rows)
+    print_transactions(rows)
     return 0
 
 
@@ -150,8 +91,7 @@ def cmd_list(ctx: Context, args: Namespace) -> int:
 def cmd_search(ctx: Context, args: Namespace) -> int:
     ledger = _open_ledger(ctx)
     rows = ledger.search(_build_query(args), args.limit)
-    _report_warnings(ledger)
-    _print_transactions(rows)
+    print_transactions(rows)
     return 0
 
 
@@ -175,7 +115,7 @@ def cmd_update(ctx: Context, args: Namespace) -> int:
 
     tx = ledger.update(args.tx_id, changes)
     print(f"[수정 완료] id={tx.id}")
-    _print_transactions([tx])
+    print_transactions([tx])
     return 0
 
 
@@ -193,7 +133,6 @@ def cmd_category(ctx: Context, args: Namespace) -> int:
 
     if args.action == "list":
         categories = ledger.categories()
-        _report_warnings(ledger)
         if not categories:
             print("[안내] 등록된 카테고리가 없습니다.")
             return 0
@@ -201,11 +140,11 @@ def cmd_category(ctx: Context, args: Namespace) -> int:
         return 0
 
     if args.action == "add":
-        name = _ask("카테고리명", ledger.add_category)
+        name = ask("카테고리명", ledger.add_category)
         print(f"[저장 완료] category={name}")
         return 0
 
-    moved = ledger.remove_category(args.name, args.replace_with)
+    moved = Categories(ledger).remove(args.name, args.replace_with)
     if moved:
         print(f"[삭제 완료] category={args.name} (거래 {moved}건을 {args.replace_with} 로 옮김)")
     else:
@@ -223,7 +162,6 @@ def cmd_budget(ctx: Context, args: Namespace) -> int:
         return 0
 
     budgets = reports.budgets()
-    _report_warnings(reports.ledger)
     if not budgets:
         print("[안내] 설정된 예산이 없습니다.")
         return 0
@@ -245,7 +183,6 @@ def cmd_summary(ctx: Context, args: Namespace) -> int:
 
     ledger = _open_ledger(ctx)
     summary = Reports(ledger).summarize(args.month)
-    _report_warnings(ledger)
 
     if summary.is_empty:
         # 유효한 달을 정상 조회했고 거래가 없을 뿐이므로 오류가 아니다.
@@ -299,7 +236,6 @@ def cmd_export(ctx: Context, args: Namespace) -> int:
         )
     )
     count = Porting(ledger).export(query, args.out)
-    _report_warnings(ledger)
     print(f"[완료] {args.out} ({count} records)")
     return 0
 
@@ -321,6 +257,18 @@ def cmd_backup(ctx: Context, args: Namespace) -> int:
 
 
 @as_command
+def cmd_repair(ctx: Context, args: Namespace) -> int:
+    report = Porting(_open_ledger(ctx)).repair()
+    if not report.moved:
+        print("[안내] 정리할 행이 없습니다.")
+        return 0
+    for name, count in sorted(report.moved.items()):
+        print(f"{name}: {count}행 격리")
+    print(f"[완료] {report.total}행을 {report.destination} 로 옮겼습니다.")
+    return 0
+
+
+@as_command
 def cmd_recurring(ctx: Context, args: Namespace) -> int:
     ledger = _open_ledger(ctx)
     recurring = Recurring(ledger)
@@ -335,7 +283,6 @@ def cmd_recurring(ctx: Context, args: Namespace) -> int:
 
 def _recurring_list(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
     rules = recurring.rules()
-    _report_warnings(ledger, recurring)
     if not rules:
         print("[안내] 등록된 반복 규칙이 없습니다.")
         return 0
@@ -354,13 +301,13 @@ def _recurring_list(recurring: Recurring, ledger: Ledger, args: Namespace) -> in
 
 def _recurring_add(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
     rule = recurring.create(
-        name=_ask("규칙 이름", _require_text("규칙 이름")),
-        day=_ask("일자(1-31)", _parse_day),
-        type=_ask("타입(income/expense)", parse_type),
-        category=_ask("카테고리", ledger.require_category),
-        amount=_ask("금액(양수)", parse_amount),
-        memo=_ask("메모(선택)", lambda raw: raw.strip(), optional=True),
-        tags=_ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True),
+        name=ask("규칙 이름", require_text("규칙 이름")),
+        day=ask("일자(1-31)", parse_day),
+        type=ask("타입(income/expense)", parse_type),
+        category=ask("카테고리", ledger.require_category),
+        amount=ask("금액(양수)", parse_amount),
+        memo=ask("메모(선택)", lambda raw: raw.strip(), optional=True),
+        tags=ask("태그(쉼표로 구분, 없으면 엔터)", parse_tags, optional=True),
     )
     print(f"[저장 완료] id={rule.id} {rule.name} 매월 {rule.day}일")
     return 0
@@ -374,32 +321,14 @@ def _recurring_remove(recurring: Recurring, ledger: Ledger, args: Namespace) -> 
 
 def _recurring_apply(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
     created = recurring.apply(args.month)
-    _report_warnings(ledger, recurring)
     if not created:
         print(f"[안내] {args.month} 에 새로 생성할 반복 내역이 없습니다.")
         return 0
     print(f"[완료] {args.month} 반복 내역 {len(created)}건 생성")
-    _print_transactions(created)
+    print_transactions(created)
     return 0
 
 
-def _require_text(label: str):
-    """비어 있으면 거부하는 입력 변환기."""
-
-    def parse(raw: str) -> str:
-        text = raw.strip()
-        if not text:
-            raise ValidationError(f"{label}은(는) 비어 있을 수 없습니다.", "값을 입력하세요.")
-        return text
-
-    return parse
-
-
-def _parse_day(raw: str) -> int:
-    text = raw.strip()
-    if not text.isdigit() or not 1 <= int(text) <= 31:
-        raise ValidationError("일자는 1~31 사이의 정수여야 합니다.", "예: 25")
-    return int(text)
 
 
 @as_command
@@ -422,6 +351,7 @@ HANDLERS: dict[str, Handler] = {
     "export": cmd_export,
     "import": cmd_import,
     "backup": cmd_backup,
+    "repair": cmd_repair,
     "recurring": cmd_recurring,
 }
 

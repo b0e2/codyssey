@@ -34,6 +34,7 @@ python -m budget_app search --help   # 명령별 옵션
 | `data/recurring.jsonl` | 반복 규칙 |
 | `data/app.log` | 실행 로그 (메모·태그는 길이만 기록) |
 | `data/backups/<타임스탬프>/` | `backup` 으로 만든 사본 |
+| `data/quarantine/<타임스탬프>/` | `repair` 가 옮긴 읽을 수 없는 행 |
 
 형식은 **JSONL** — 한 줄에 JSON 객체 하나다. 행이 곧 스트리밍 단위여서 파일 전체를 메모리에 올리지 않고 읽을 수 있고, 태그 배열을 그대로 담을 수 있다. 쉼표가 들어간 메모도 CSV 처럼 인용 규칙을 따로 신경 쓸 필요가 없다(JSON 문자열 이스케이프는 `json` 모듈이 처리한다).
 
@@ -126,15 +127,18 @@ python -m budget_app import --from import.csv
 `export` 는 `--month` 또는 `--from`+`--to` 중 **하나를 반드시** 받는다. 기간을 쓸 때는 양쪽을 모두 지정해야 하며, `--month` 와 함께 쓸 수는 없다.
 `--out` 으로 저장 파일 경로를 지정하면 거부한다. 운영 데이터가 CSV 로 덮어써지기 때문이다.
 
-### 백업·반복 내역
+### 백업·복구·반복 내역
 
 ```bash
 python -m budget_app backup
+python -m budget_app repair
 python -m budget_app recurring add                        # 대화형
 python -m budget_app recurring list
 python -m budget_app recurring apply --month 2024-03
 python -m budget_app recurring remove --id RR-3f9a2c17
 ```
+
+`repair` 는 읽을 수 없는 행을 `data/quarantine/<타임스탬프>/` 로 **옮기고** 정상 행만 남긴다. 지우지 않으므로 손으로 고쳐 되돌릴 수 있다.
 
 `apply` 는 같은 달에 여러 번 실행해도 거래를 한 번만 만든다. 생성한 거래에 `<규칙 id>:<월>` 을 출처로 남겨 두기 때문이다. 규칙의 일자가 그 달에 없으면(예: 31일 → 2월) 말일로 옮긴다.
 
@@ -193,14 +197,17 @@ $ python -m budget_app add
 ```
 budget_app/
 ├── __main__.py     진입점
-├── models.py       데이터 구조와 불변식 (아무것도 의존하지 않는다)
+├── errors.py       오류 계층 (종료 코드를 예외가 들고 다닌다)
+├── validators.py   원시 값의 규칙 (날짜·금액·타입·카테고리명)
+├── models.py       데이터 구조와 불변식
 ├── storage.py      JSONL 읽기·쓰기, 원자적 교체
 ├── decorators.py   오류 처리·실행 로그·시간 측정
-├── service/        업무 규칙 (ledger / reports / porting / recurring)
-└── cli/            명령행 파싱과 출력 (app / render)
+├── service/        업무 규칙 (ledger / categories / reports / porting / recurring)
+└── cli/            명령행 파싱·입력·출력 (parser / app / prompts / render)
 ```
 
-의존은 한 방향으로만 흐른다: `cli → service → storage → models`.
+의존은 한 방향으로만 흐른다: `cli → service → storage → models → validators → errors`.
+`storage` 는 `errors` 외에 아무것도 가져오지 않는다 — 저장소는 도메인 타입을 모른다.
 `tests/test_architecture.py` 가 각 모듈의 import 를 검사해 이 방향을 강제한다. 폴더는 경계를 만들어 주지 않으므로 테스트로 확인한다.
 
 ## 알려진 한계
@@ -209,8 +216,9 @@ budget_app/
 - **원자성은 파일 하나 단위다.** 임시 파일에 쓰고 `os.replace` 로 바꾸므로 한 파일이 반쯤 쓰인 상태로 남지 않는다. 다만 `category remove --replace-with` 는 거래 파일과 카테고리 파일을 함께 바꾸며, 이 둘은 원자적이지 않다. 거래를 먼저 커밋하므로 중간에 실패해도 쓰이지 않는 카테고리가 남을 뿐 참조가 깨지지는 않는다.
 - **동시 실행을 가정하지 않는다.** 여러 프로세스가 같은 데이터 디렉터리에 동시에 쓰면 결과를 보장하지 않는다.
 - **CSV 에는 `id` 와 `source` 가 없다.** 같은 파일을 두 번 `import` 하면 거래가 중복되고, 반복 내역을 CSV 로 내보냈다 다시 가져오면 출처가 사라져 같은 달에 `apply` 할 때 다시 생성된다.
-- **읽기 명령은 손상된 행을 건너뛴다.** 건너뛴 줄 번호를 `stderr` 로 알리되 종료 코드는 0이므로, 자동화에서는 `stderr` 를 함께 확인해야 한다. 파일을 통째로 다시 쓰는 명령(`update` / `delete` / `category remove` / `budget set` / `recurring remove` / `recurring apply` / `import`)은 손상 행이 있으면 원본을 건드리지 않고 종료 코드 4로 중단한다.
-- **기본 카테고리는 파일을 처음 만들 때만 넣는다.** 카테고리를 모두 지운 상태는 그대로 유지되며, 손상된 카테고리 파일을 기본값으로 덮어쓰지 않는다.
+- **읽을 수 없는 행을 만나면 명령을 멈춘다.** 조회든 재작성이든 같은 기준이라, 일부만 보여주거나 일부만 저장하는 상태가 생기지 않는다. 어느 파일의 몇 번째 줄인지 알려주고 종료 코드 4로 끝난다. 정리는 `repair` 가 맡는다.
+  - 예외는 `add` 다. 기존 내용을 다시 쓰지 않으므로 파일 전체를 읽지 않는다. 다만 마지막 행이 줄바꿈 없이 끝났으면 거부한다 — 그대로 이어쓰면 두 행이 한 줄로 붙는다.
+- **기본 카테고리는 파일을 처음 만들 때만 넣는다.** 카테고리를 모두 지운 상태는 그대로 유지되며, 기존 카테고리 파일을 기본값으로 덮어쓰지 않는다.
 
 ## 테스트
 
