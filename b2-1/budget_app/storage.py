@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 
-from budget_app.models import StorageError
+from budget_app.errors import StorageError
 
 DEFAULT_CATEGORIES = ("food", "transport", "rent", "salary", "etc")
 _TAIL_BLOCK = 4096

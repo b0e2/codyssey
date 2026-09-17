@@ -197,14 +197,17 @@ $ python -m budget_app add
 ```
 budget_app/
 ├── __main__.py     진입점
-├── models.py       데이터 구조와 불변식 (아무것도 의존하지 않는다)
+├── errors.py       오류 계층 (종료 코드를 예외가 들고 다닌다)
+├── validators.py   원시 값의 규칙 (날짜·금액·타입·카테고리명)
+├── models.py       데이터 구조와 불변식
 ├── storage.py      JSONL 읽기·쓰기, 원자적 교체
 ├── decorators.py   오류 처리·실행 로그·시간 측정
-├── service/        업무 규칙 (ledger / reports / porting / recurring)
-└── cli/            명령행 파싱과 출력 (app / render)
+├── service/        업무 규칙 (ledger / categories / reports / porting / recurring)
+└── cli/            명령행 파싱·입력·출력 (parser / app / prompts / render)
 ```
 
-의존은 한 방향으로만 흐른다: `cli → service → storage → models`.
+의존은 한 방향으로만 흐른다: `cli → service → storage → models → validators → errors`.
+`storage` 는 `errors` 외에 아무것도 가져오지 않는다 — 저장소는 도메인 타입을 모른다.
 `tests/test_architecture.py` 가 각 모듈의 import 를 검사해 이 방향을 강제한다. 폴더는 경계를 만들어 주지 않으므로 테스트로 확인한다.
 
 ## 알려진 한계

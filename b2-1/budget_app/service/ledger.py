@@ -12,16 +12,9 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, Iterator
 
-from budget_app.models import (
-    NotFoundError,
-    Query,
-    StorageError,
-    Transaction,
-    ValidationError,
-    format_tx_id,
-    normalize_category,
-    parse_tx_id,
-)
+from budget_app.errors import NotFoundError, StorageError, ValidationError
+from budget_app.validators import format_tx_id, normalize_category, parse_tx_id
+from budget_app.models import Query, Transaction
 from budget_app.service.reading import read
 from budget_app.storage import DataDir
 
@@ -119,7 +112,7 @@ class Ledger:
 
     # ── 변경 ────────────────────────────────────────────────────────────
 
-    def _rewrite(self, transform) -> None:
+    def rewrite(self, transform) -> None:
         """거래 파일을 통째로 다시 쓴다.
 
         모든 행을 모델로 복원한 뒤 넘긴다. JSON 문법만 보면 필수 항목이
@@ -153,7 +146,7 @@ class Ledger:
             updated.append(new_tx)
             return new_tx.to_dict()
 
-        self._rewrite(transform)
+        self.rewrite(transform)
         if not updated:
             raise NotFoundError(
                 f"거래를 찾을 수 없습니다: {wanted}", "list 로 id 를 확인하세요."
@@ -170,7 +163,7 @@ class Ledger:
             removed.append(tx)
             return None
 
-        self._rewrite(transform)
+        self.rewrite(transform)
         if not removed:
             raise NotFoundError(
                 f"거래를 찾을 수 없습니다: {wanted}", "list 로 id 를 확인하세요."
@@ -181,108 +174,6 @@ class Ledger:
         """검증을 거친 거래를 다시 dict 로 흘린다. 파일을 다시 쓸 때 쓴다."""
         for tx in self.stream_transactions():
             yield tx.to_dict()
-
-    # ── 카테고리 관리 ────────────────────────────────────────────────────
-
-    def add_category(self, name: str) -> str:
-        category = normalize_category(name)
-        if category in self.categories():
-            raise ValidationError(
-                f"이미 등록된 카테고리입니다: {category}", "category list 로 확인하세요."
-            )
-        self.data.categories.append({"name": category})
-        return category
-
-    def count_by_category(self, name: str) -> int:
-        return sum(1 for tx in self.stream_transactions() if tx.category == name)
-
-    def remove_category(self, name: str, replace_with: str | None = None) -> int:
-        """카테고리를 지운다. 사용 중이면 대체 카테고리로 옮긴 뒤 지운다.
-
-        거래를 먼저 커밋하고 카테고리를 나중에 지운다. 두 파일을 한 번에 바꿀
-        수는 없으므로, 중간에 실패해도 참조가 깨지지 않는 방향을 택한다.
-        중간 실패 시 쓰이지 않는 카테고리가 남을 뿐이다.
-        """
-        category = normalize_category(name)
-        # 카테고리 파일 검사를 먼저 끝낸다. 거래를 옮긴 뒤에 이 파일이 손상된 걸
-        # 알게 되면, 명령은 실패했는데 거래만 바뀐 상태로 남는다.
-        registered = self.categories()
-        if category not in registered:
-            raise NotFoundError(
-                f"등록되지 않은 카테고리입니다: {category}", "category list 로 확인하세요."
-            )
-        self._reject_if_used_by_rules(category)
-
-        if replace_with is None:
-            self._reject_if_used_by_transactions(category)
-            moved = 0
-        else:
-            target = self._resolve_replacement(category, replace_with, registered)
-            moved = self._move_transactions(category, target)
-
-        self.data.categories.write_all(
-            {"name": item} for item in registered if item != category
-        )
-        return moved
-
-    def _reject_if_used_by_rules(self, category: str) -> None:
-        using = self._rules_using(category)
-        if using:
-            raise ValidationError(
-                f"'{category}' 를 사용하는 반복 규칙이 {using}개 있습니다.",
-                "recurring remove 로 규칙을 먼저 정리하세요.",
-            )
-
-    def _reject_if_used_by_transactions(self, category: str) -> None:
-        used = self.count_by_category(category)
-        if used:
-            raise ValidationError(
-                f"'{category}' 를 사용하는 거래가 {used}건 있습니다.",
-                "--replace-with <카테고리> 로 대체할 카테고리를 지정하세요.",
-            )
-
-    @staticmethod
-    def _resolve_replacement(
-        category: str, replace_with: str, registered: list[str]
-    ) -> str:
-        target = normalize_category(replace_with)
-        if target not in registered:
-            raise NotFoundError(
-                f"등록되지 않은 카테고리입니다: {target}",
-                "category list 로 목록을 보거나 category add 로 등록하세요.",
-            )
-        if target == category:
-            raise ValidationError(
-                "대체 카테고리가 삭제할 카테고리와 같습니다.", "다른 카테고리를 지정하세요."
-            )
-        return target
-
-    def _move_transactions(self, category: str, target: str) -> int:
-        """옮긴 건수는 치환하면서 센다. 세려고 파일을 한 번 더 읽지 않는다."""
-        moved = 0
-
-        def transform(tx: Transaction) -> dict[str, Any]:
-            nonlocal moved
-            if tx.category != category:
-                return tx.to_dict()
-            moved += 1
-            return replace(tx, category=target).to_dict()
-
-        self._rewrite(transform)
-        return moved
-
-    def _rules_using(self, category: str) -> int:
-        """반복 규칙이 참조하는지 센다.
-
-        규칙 모델을 몰라도 되는 일이라 dict 그대로 읽는다. 여기서 막지 않으면
-        규칙만 존재하지 않는 카테고리를 가리킨 채 남는다.
-        """
-        return sum(
-            1
-            for row in self.data.recurring.stream()
-            if row.get("category") == category
-        )
-
 
     def add_many(self, transactions: list[Transaction]) -> list[Transaction]:
         """여러 거래를 한 번의 교체로 저장한다.

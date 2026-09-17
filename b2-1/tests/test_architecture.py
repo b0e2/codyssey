@@ -15,22 +15,38 @@ ROOT = Path(__file__).resolve().parent.parent / PACKAGE
 
 # 모듈 -> import 해도 되는 내부 모듈
 ALLOWED: dict[str, set[str]] = {
-    "models": set(),
-    "storage": {"models"},
-    "decorators": {"models"},
-    "cli.render": {"models"},
+    # 의존은 아래로만 흐른다: cli → service → storage → models → validators → errors
+    "errors": set(),
+    "validators": {"errors"},
+    "models": {"errors", "validators"},
+    # 저장소는 도메인 타입을 모른다. 예외만 공유한다.
+    "storage": {"errors"},
+    "decorators": {"errors", "models"},
     "cli.parser": set(),
-    "service.reading": {"models", "storage"},
-    "service.ledger": {"models", "storage", "service.reading"},
-    "service.reports": {"models", "storage", "service.reading", "service.ledger"},
-    "service.porting": {"models", "storage", "service.reading", "service.ledger"},
-    "service.recurring": {"models", "storage", "service.reading", "service.ledger"},
+    "cli.prompts": {"errors", "cli.render"},
+    "cli.render": {"models"},
+    "service.reading": {"errors", "models", "storage"},
+    "service.ledger": {"errors", "models", "validators", "storage", "service.reading"},
+    "service.categories": {"errors", "models", "validators", "service.ledger"},
+    "service.reports": {
+        "errors", "models", "validators", "storage", "service.ledger", "service.reading"
+    },
+    "service.porting": {
+        "errors", "models", "validators", "storage", "service.ledger", "service.reading"
+    },
+    "service.recurring": {
+        "errors", "models", "validators", "storage", "service.ledger", "service.reading"
+    },
     "cli.app": {
+        "errors",
         "models",
+        "validators",
         "decorators",
         "cli.parser",
+        "cli.prompts",
         "cli.render",
         "service.ledger",
+        "service.categories",
         "service.reports",
         "service.porting",
         "service.recurring",
@@ -80,19 +96,14 @@ class LayerTest(unittest.TestCase):
                         f"{name} 은 {target} 을 import 할 수 없다",
                     )
 
-    def test_models_depends_on_nothing_internal(self) -> None:
-        path = ROOT / "models.py"
-        self.assertEqual(internal_imports(path), [])
+    def test_errors_sit_at_the_bottom(self) -> None:
+        self.assertEqual(internal_imports(ROOT / "errors.py"), [])
 
-    def test_storage_takes_only_exceptions_from_models(self) -> None:
-        # storage 는 dict 만 흘린다. Transaction 이나 Query 를 알면 계층이 샌다.
-        for target, names in internal_imports(ROOT / "storage.py"):
-            self.assertEqual(target, "models")
-            for imported in names:
-                self.assertTrue(
-                    imported.endswith("Error"),
-                    f"storage 는 models 에서 예외만 가져와야 한다: {imported}",
-                )
+    def test_storage_knows_no_domain_type(self) -> None:
+        # 저장소는 dict 만 흘린다. Transaction 이나 Query 를 알면 계층이 샌다.
+        # 예외를 별도 모듈로 둔 덕분에 이름을 하나하나 보지 않아도 규칙으로 드러난다.
+        for target, _ in internal_imports(ROOT / "storage.py"):
+            self.assertEqual(target, "errors")
 
     def test_cli_does_not_reach_storage_directly(self) -> None:
         for path in (ROOT / "cli").glob("*.py"):

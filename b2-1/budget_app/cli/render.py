@@ -6,12 +6,21 @@
 
 from __future__ import annotations
 
+import sys
 import unicodedata
 from typing import Iterable, Literal, Sequence
+
+from budget_app.models import Transaction
 
 Align = Literal["left", "right"]
 
 ELLIPSIS = "…"
+
+
+def warn(*lines: str) -> None:
+    """경고와 안내는 결과와 섞이지 않도록 stderr 로 보낸다."""
+    for line in lines:
+        print(line, file=sys.stderr)
 
 
 def display_width(text: str) -> int:
@@ -74,3 +83,33 @@ def render_table(
 
 def render_lines(items: Iterable[str]) -> str:
     return "\n".join(f"- {item}" for item in items)
+
+
+_TABLE_HEADERS = ("id", "날짜", "타입", "카테고리", "금액", "메모", "태그")
+_TABLE_ALIGNS = ("left", "left", "left", "left", "right", "left", "left")
+_MEMO_MAX_WIDTH = 24
+
+
+def print_transactions(rows: list[Transaction]) -> None:
+    if not rows:
+        print("[안내] 조건에 맞는 거래가 없습니다.")
+        return
+    table = render_table(
+        _TABLE_HEADERS,
+        [
+            [
+                tx.id,
+                tx.date.isoformat(),
+                tx.type,
+                tx.category,
+                format_amount(tx.amount),
+                tx.memo,
+                ",".join(tx.tags),
+            ]
+            for tx in rows
+        ],
+        _TABLE_ALIGNS,
+        max_widths=[0, 0, 0, 0, 0, _MEMO_MAX_WIDTH, 0],
+    )
+    print(table)
+    print(f"\n총 {len(rows)}건")

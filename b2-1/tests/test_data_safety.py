@@ -13,7 +13,9 @@ from datetime import date
 from unittest.mock import patch
 from pathlib import Path
 
-from budget_app.models import Query, StorageError, ValidationError
+from budget_app.errors import StorageError, ValidationError
+from budget_app.models import Query
+from budget_app.service.categories import Categories
 from budget_app.service.ledger import Ledger, open_ledger
 from budget_app.service.porting import Porting
 from budget_app.service.recurring import Recurring
@@ -42,7 +44,7 @@ class SeedingTest(SafetyTestCase):
 
     def test_deleting_every_category_does_not_resurrect_defaults(self) -> None:
         for name in list(self.ledger().categories()):
-            self.ledger().remove_category(name)
+            Categories(self.ledger()).remove(name)
         self.data.ensure()
         self.assertEqual(self.ledger().categories(), [])
 
@@ -88,7 +90,7 @@ class StrictRewriteTest(SafetyTestCase):
             fp.write("broken\n")
         before = self.data.categories.path.read_text(encoding="utf-8")
         with self.assertRaises(StorageError):
-            self.ledger().remove_category("rent")
+            Categories(self.ledger()).remove("rent")
         self.assertEqual(self.data.categories.path.read_text(encoding="utf-8"), before)
 
     def test_reading_stops_on_corruption_too(self) -> None:
@@ -123,7 +125,7 @@ class RecurringReferenceTest(SafetyTestCase):
             name="월세", day=25, type="expense", category="rent", amount=1000
         )
         with self.assertRaises(ValidationError):
-            self.ledger().remove_category("rent")
+            Categories(self.ledger()).remove("rent")
         self.assertIn("rent", self.ledger().categories())
 
 

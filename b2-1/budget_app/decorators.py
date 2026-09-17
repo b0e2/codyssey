@@ -15,7 +15,8 @@ from argparse import Namespace
 from datetime import datetime
 from typing import Protocol
 
-from budget_app.models import AppError, Context
+from budget_app.errors import AppError
+from budget_app.models import Context
 
 _MASKED_FIELDS = ("memo", "tags", "keyword")
 

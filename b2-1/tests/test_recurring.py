@@ -7,7 +7,9 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from budget_app.models import NotFoundError, Query, StorageError, ValidationError
+from budget_app.errors import NotFoundError, StorageError, ValidationError
+from budget_app.models import Query
+from budget_app.service.categories import Categories
 from budget_app.service.ledger import Ledger
 from budget_app.service.recurring import Recurring
 from budget_app.storage import DataDir
@@ -105,7 +107,7 @@ class ApplyTest(RecurringTestCase):
     def test_category_used_by_a_rule_cannot_be_removed(self) -> None:
         self.rule(category="food")
         with self.assertRaises(ValidationError) as ctx:
-            Ledger(self.data).remove_category("food")
+            Categories(Ledger(self.data)).remove("food")
         self.assertIn("반복 규칙", ctx.exception.message)
 
     def test_missing_category_is_skipped_with_a_warning(self) -> None:
