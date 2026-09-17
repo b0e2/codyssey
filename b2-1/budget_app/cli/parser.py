@@ -149,6 +149,7 @@ def _add_porting_commands(sub: _SubParsers, common: argparse.ArgumentParser) -> 
     )
 
     sub.add_parser("backup", parents=[common], help="데이터 파일 백업")
+    sub.add_parser("repair", parents=[common], help="읽을 수 없는 행 격리")
 
 
 def _add_recurring_commands(sub: _SubParsers, common: argparse.ArgumentParser) -> None:

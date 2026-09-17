@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 from budget_app.models import StorageError
-from budget_app.storage import DEFAULT_CATEGORIES, DataDir, JsonlStore, describe_corruption
+from budget_app.storage import DEFAULT_CATEGORIES, DataDir, JsonlStore
 
 
 class StoreTestCase(unittest.TestCase):
@@ -28,21 +28,28 @@ class StreamTest(StoreTestCase):
     def test_missing_file_is_empty(self) -> None:
         self.assertEqual(list(self.store().stream()), [])
 
-    def test_skips_corrupt_and_reports_line_numbers(self) -> None:
+    def test_blank_lines_are_not_corruption(self) -> None:
         store = self.store()
-        self.write_raw(store, '{"id": 1}\nnot json\n\n{"id": 2}\n[1, 2]\n')
-        corrupt: list[int] = []
-        rows = list(store.stream(corrupt))
-        self.assertEqual([r["id"] for r in rows], [1, 2])
-        # 빈 줄은 손상이 아니고, JSON 이지만 객체가 아닌 행은 손상으로 본다.
-        self.assertEqual(corrupt, [2, 5])
+        self.write_raw(store, '{"id": 1}\n\n{"id": 2}\n')
+        self.assertEqual([r["id"] for r in store.stream()], [1, 2])
 
-    def test_strict_aborts_on_first_corrupt_row(self) -> None:
+    def test_stops_at_the_first_unreadable_row(self) -> None:
         store = self.store()
         self.write_raw(store, '{"id": 1}\nbroken\n{"id": 2}\n')
         with self.assertRaises(StorageError) as ctx:
-            list(store.stream_strict())
+            list(store.stream())
         self.assertIn("2번째 줄", ctx.exception.message)
+
+    def test_json_that_is_not_an_object_is_unreadable(self) -> None:
+        store = self.store()
+        self.write_raw(store, "[1, 2]\n")
+        with self.assertRaises(StorageError):
+            list(store.stream())
+
+    def test_iter_lines_gives_raw_text_for_repair(self) -> None:
+        store = self.store()
+        self.write_raw(store, '{"id": 1}\nbroken\n')
+        self.assertEqual(list(store.iter_lines()), [(1, '{"id": 1}'), (2, "broken")])
 
 
 class LastRowTest(StoreTestCase):
@@ -86,12 +93,12 @@ class AppendTest(StoreTestCase):
             store.append({"id": 2})
         self.assertEqual(store.path.read_text(encoding="utf-8"), '{"id": 1}')
 
-    def test_append_ignores_existing_corruption(self) -> None:
-        # 기존 내용을 다시 쓰지 않으므로 손상 행이 있어도 덧붙이기는 가능해야 한다.
+    def test_append_does_not_reread_existing_rows(self) -> None:
+        # 기존 내용을 다시 쓰지 않으므로 읽을 수 없는 행이 있어도 덧붙일 수 있다.
         store = self.store()
         self.write_raw(store, "broken\n")
         store.append({"id": 2})
-        self.assertEqual([r["id"] for r in store.stream()], [2])
+        self.assertEqual(list(store.iter_lines()), [(1, "broken"), (2, '{"id": 2}')])
 
 
 class AtomicWriteTest(StoreTestCase):
@@ -173,17 +180,6 @@ class DataDirTest(StoreTestCase):
         second = data.backup("20240115-103000")
         self.assertNotEqual(first, second)
         self.assertTrue(second.name.endswith("-2"))
-
-
-class CorruptionMessageTest(unittest.TestCase):
-    def test_lists_first_ten_then_summarizes(self) -> None:
-        message = describe_corruption(Path("/tmp/transactions.jsonl"), list(range(1, 15)))
-        self.assertIn("손상된 행 14개", message)
-        self.assertIn("1, 2, 3, 4, 5, 6, 7, 8, 9, 10 외 4개", message)
-
-    def test_short_list_has_no_tail(self) -> None:
-        message = describe_corruption(Path("/tmp/a.jsonl"), [3, 7])
-        self.assertIn("(줄: 3, 7)", message)
 
 
 if __name__ == "__main__":

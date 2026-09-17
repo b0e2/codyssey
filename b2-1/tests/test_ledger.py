@@ -118,20 +118,22 @@ class SearchTest(LedgerTestCase):
 
 
 class CorruptionTest(LedgerTestCase):
-    def test_corrupt_rows_are_skipped_with_a_warning(self) -> None:
+    """읽을 수 없는 행을 만나면 조회도 멈춘다. 일부만 보여주지 않는다."""
+
+    def test_unreadable_json_stops_the_query(self) -> None:
         self.add("2024-01-10")
         with self.data.transactions.path.open("a", encoding="utf-8") as fp:
             fp.write("broken\n")
-            fp.write(json.dumps({"id": "TX-000002", "type": "expense"}) + "\n")
-        ledger = self.ledger()
-        rows = ledger.search(Query(), 10)
-        self.assertEqual(len(rows), 1)
-        self.assertTrue(ledger.warnings)
-        self.assertIn("건너뛰었습니다", ledger.warnings[0])
+        with self.assertRaises(StorageError):
+            self.ledger().search(Query(), 10)
 
-    def test_reading_never_fails_on_corruption(self) -> None:
-        self.data.transactions.path.write_text("broken\n", encoding="utf-8")
-        self.assertEqual(self.ledger().search(Query(), 10), [])
+    def test_row_breaking_the_rules_stops_the_query(self) -> None:
+        self.add("2024-01-10")
+        with self.data.transactions.path.open("a", encoding="utf-8") as fp:
+            fp.write(json.dumps({"id": "TX-000002", "type": "expense"}) + "\n")
+        with self.assertRaises(StorageError) as ctx:
+            self.ledger().search(Query(), 10)
+        self.assertIn("repair", ctx.exception.hint)
 
 
 class UpdateTest(LedgerTestCase):

@@ -7,7 +7,7 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from budget_app.models import ValidationError
+from budget_app.models import StorageError, ValidationError
 from budget_app.service.ledger import Ledger
 from budget_app.service.reports import Reports
 from budget_app.storage import DataDir
@@ -97,11 +97,12 @@ class BudgetTest(ReportsTestCase):
         with self.assertRaises(ValidationError):
             self.reports().set_budget("2024-01", 0)
 
-    def test_corrupt_budget_row_is_skipped(self) -> None:
+    def test_unreadable_budget_row_stops_the_query(self) -> None:
         self.reports().set_budget("2024-01", 500_000)
         with self.data.budgets.path.open("a", encoding="utf-8") as fp:
             fp.write('{"month": "nope"}\n')
-        self.assertEqual(self.reports().budget_for("2024-01"), 500_000)
+        with self.assertRaises(StorageError):
+            self.reports().budget_for("2024-01")
 
     def test_summary_carries_budget_state(self) -> None:
         self.add("2024-01-15", 215_000)

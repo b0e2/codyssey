@@ -54,12 +54,6 @@ def _warn(*lines: str) -> None:
         print(line, file=sys.stderr)
 
 
-def _report_warnings(*sources: object) -> None:
-    """서비스가 모아 둔 손상 행 경고를 내보낸다."""
-    for source in sources:
-        _warn(*getattr(source, "warnings", ()))
-
-
 def _print_transactions(rows: list[Transaction]) -> None:
     if not rows:
         print("[안내] 조건에 맞는 거래가 없습니다.")
@@ -141,7 +135,6 @@ def cmd_add(ctx: Context, args: Namespace) -> int:
 def cmd_list(ctx: Context, args: Namespace) -> int:
     ledger = _open_ledger(ctx)
     rows = ledger.search(Query(), args.limit)
-    _report_warnings(ledger)
     _print_transactions(rows)
     return 0
 
@@ -150,7 +143,6 @@ def cmd_list(ctx: Context, args: Namespace) -> int:
 def cmd_search(ctx: Context, args: Namespace) -> int:
     ledger = _open_ledger(ctx)
     rows = ledger.search(_build_query(args), args.limit)
-    _report_warnings(ledger)
     _print_transactions(rows)
     return 0
 
@@ -193,7 +185,6 @@ def cmd_category(ctx: Context, args: Namespace) -> int:
 
     if args.action == "list":
         categories = ledger.categories()
-        _report_warnings(ledger)
         if not categories:
             print("[안내] 등록된 카테고리가 없습니다.")
             return 0
@@ -223,7 +214,6 @@ def cmd_budget(ctx: Context, args: Namespace) -> int:
         return 0
 
     budgets = reports.budgets()
-    _report_warnings(reports.ledger)
     if not budgets:
         print("[안내] 설정된 예산이 없습니다.")
         return 0
@@ -245,7 +235,6 @@ def cmd_summary(ctx: Context, args: Namespace) -> int:
 
     ledger = _open_ledger(ctx)
     summary = Reports(ledger).summarize(args.month)
-    _report_warnings(ledger)
 
     if summary.is_empty:
         # 유효한 달을 정상 조회했고 거래가 없을 뿐이므로 오류가 아니다.
@@ -299,7 +288,6 @@ def cmd_export(ctx: Context, args: Namespace) -> int:
         )
     )
     count = Porting(ledger).export(query, args.out)
-    _report_warnings(ledger)
     print(f"[완료] {args.out} ({count} records)")
     return 0
 
@@ -321,6 +309,18 @@ def cmd_backup(ctx: Context, args: Namespace) -> int:
 
 
 @as_command
+def cmd_repair(ctx: Context, args: Namespace) -> int:
+    report = Porting(_open_ledger(ctx)).repair()
+    if not report.moved:
+        print("[안내] 정리할 행이 없습니다.")
+        return 0
+    for name, count in sorted(report.moved.items()):
+        print(f"{name}: {count}행 격리")
+    print(f"[완료] {report.total}행을 {report.destination} 로 옮겼습니다.")
+    return 0
+
+
+@as_command
 def cmd_recurring(ctx: Context, args: Namespace) -> int:
     ledger = _open_ledger(ctx)
     recurring = Recurring(ledger)
@@ -335,7 +335,6 @@ def cmd_recurring(ctx: Context, args: Namespace) -> int:
 
 def _recurring_list(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
     rules = recurring.rules()
-    _report_warnings(ledger, recurring)
     if not rules:
         print("[안내] 등록된 반복 규칙이 없습니다.")
         return 0
@@ -374,7 +373,6 @@ def _recurring_remove(recurring: Recurring, ledger: Ledger, args: Namespace) -> 
 
 def _recurring_apply(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
     created = recurring.apply(args.month)
-    _report_warnings(ledger, recurring)
     if not created:
         print(f"[안내] {args.month} 에 새로 생성할 반복 내역이 없습니다.")
         return 0
@@ -422,6 +420,7 @@ HANDLERS: dict[str, Handler] = {
     "export": cmd_export,
     "import": cmd_import,
     "backup": cmd_backup,
+    "repair": cmd_repair,
     "recurring": cmd_recurring,
 }
 
