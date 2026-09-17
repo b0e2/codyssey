@@ -39,7 +39,7 @@ class CommandTestCase(unittest.TestCase):
 class HelpTest(CommandTestCase):
     COMMANDS = (
         "add list search summary budget category "
-        "update delete export import backup recurring"
+        "update delete export import backup repair recurring"
     ).split()
 
     def test_every_command_has_help(self) -> None:
@@ -142,18 +142,35 @@ class ExitCodeTest(CommandTestCase):
         self.assertNotIn("Traceback", result.stderr + result.stdout)
 
 
-class WarningTest(CommandTestCase):
-    def test_reading_reports_corruption_on_stderr_but_succeeds(self) -> None:
+class CorruptionTest(CommandTestCase):
+    def test_commands_stop_and_point_at_the_line(self) -> None:
         self.add("2024-01-15", "expense", "food", "15000")
-        for name in ("transactions", "categories", "budgets", "recurring"):
-            with (self.data / f"{name}.jsonl").open("a", encoding="utf-8") as fp:
-                fp.write("broken\n")
+        with (self.data / "transactions.jsonl").open("a", encoding="utf-8") as fp:
+            fp.write("broken\n")
 
-        for args in (("list",), ("category", "list"), ("budget", "list"), ("recurring", "list")):
-            with self.subTest(command=args):
-                result = self.run_cmd(*args)
-                self.assertEqual(result.returncode, 0)
-                self.assertIn("[경고]", result.stderr)
+        result = self.run_cmd("list")
+        self.assertEqual(result.returncode, 4)
+        self.assertIn("2번째 줄", result.stderr)
+        self.assertIn("repair", result.stderr)
+
+    def test_repair_restores_the_file(self) -> None:
+        self.add("2024-01-15", "expense", "food", "15000")
+        with (self.data / "transactions.jsonl").open("a", encoding="utf-8") as fp:
+            fp.write("broken\n")
+
+        repaired = self.run_cmd("repair")
+        self.assertEqual(repaired.returncode, 0)
+        self.assertIn("1행 격리", repaired.stdout)
+
+        listed = self.run_cmd("list")
+        self.assertEqual(listed.returncode, 0)
+        self.assertIn("TX-000001", listed.stdout)
+
+    def test_repair_with_nothing_to_do(self) -> None:
+        self.run_cmd("list")
+        result = self.run_cmd("repair")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("정리할 행이 없습니다", result.stdout)
 
 
 class InteractiveTest(CommandTestCase):

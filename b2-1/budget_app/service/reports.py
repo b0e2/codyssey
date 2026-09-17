@@ -26,16 +26,10 @@ class Reports:
 
     # ── 예산 ────────────────────────────────────────────────────────────
 
-    def budgets(self, strict: bool = False) -> list[Budget]:
+    def budgets(self) -> list[Budget]:
         """월별 예산. 같은 달이 여러 번 나오면 마지막 값을 쓴다."""
         items: dict[str, Budget] = {}
-        for budget in read(
-            self.data.budgets,
-            Budget.from_dict,
-            label="예산",
-            strict=strict,
-            warnings=self.ledger.warnings,
-        ):
+        for budget in read(self.data.budgets, Budget.from_dict, label="예산"):
             items[budget.month] = budget
         return [items[month] for month in sorted(items)]
 
@@ -52,7 +46,7 @@ class Reports:
         덧붙이기만 하면 같은 달이 여러 줄로 쌓여 어느 값이 맞는지 알 수 없다.
         """
         budget = Budget(parse_month(month), parse_amount(amount))
-        merged = {item.month: item for item in self.budgets(strict=True)}
+        merged = {item.month: item for item in self.budgets()}
         merged[budget.month] = budget
         self.data.budgets.write_all(
             merged[key].to_dict() for key in sorted(merged)

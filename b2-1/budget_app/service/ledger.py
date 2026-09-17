@@ -34,33 +34,16 @@ def _category_name(row: dict[str, Any]) -> str:
 
 
 class Ledger:
-    """거래 관련 유스케이스.
-
-    명령 하나당 인스턴스 하나를 만든다. 읽는 동안 건너뛴 손상 행 경고를
-    `warnings` 에 모아두면 CLI 가 결과와 함께 보여줄 수 있다.
-    """
+    """거래 관련 유스케이스. 명령 하나당 인스턴스 하나를 만든다."""
 
     def __init__(self, data: DataDir) -> None:
         self.data = data
-        self.warnings: list[str] = []
 
     # ── 카테고리 ────────────────────────────────────────────────────────
 
-    def categories(self, strict: bool = False) -> list[str]:
-        """카테고리 목록.
-
-        파일을 다시 쓰는 경로에서는 strict 로 읽는다. 손상 행을 건너뛴 채
-        저장하면 읽지 못한 카테고리가 사라진다.
-        """
-        return list(
-            read(
-                self.data.categories,
-                _category_name,
-                label="카테고리",
-                strict=strict,
-                warnings=self.warnings,
-            )
-        )
+    def categories(self) -> list[str]:
+        """카테고리 목록."""
+        return list(read(self.data.categories, _category_name, label="카테고리"))
 
     def require_category(self, name: str) -> str:
         category = normalize_category(name)
@@ -74,13 +57,8 @@ class Ledger:
     # ── 읽기 ────────────────────────────────────────────────────────────
 
     def stream_transactions(self) -> Iterator[Transaction]:
-        """정상 행만 흘린다. 손상 행과 규칙에 어긋난 행은 건너뛰고 경고로 모은다."""
-        return read(
-            self.data.transactions,
-            Transaction.from_dict,
-            label="거래",
-            warnings=self.warnings,
-        )
+        """저장된 거래를 하나씩 흘린다."""
+        return read(self.data.transactions, Transaction.from_dict, label="거래")
 
     def search(self, query: Query, limit: int) -> list[Transaction]:
         """조건에 맞는 거래를 최신순으로 돌려준다.
@@ -149,11 +127,10 @@ class Ledger:
         중단한다는 약속도 문법 오류에만 적용된다.
         """
 
-        rows = read(
-            self.data.transactions, Transaction.from_dict, label="거래", strict=True
-        )
         self.data.transactions.write_all(
-            row for row in map(transform, rows) if row is not None
+            row
+            for row in map(transform, self.stream_transactions())
+            if row is not None
         )
 
     def update(self, tx_id: str, changes: dict[str, Any]) -> Transaction:
@@ -200,16 +177,9 @@ class Ledger:
             )
         return removed[0]
 
-    def strict_rows(self) -> Iterator[dict[str, Any]]:
-        """저장된 거래를 모델로 검증한 뒤 다시 dict 로 흘린다.
-
-        파일을 통째로 다시 쓰는 경로가 기존 행을 그대로 복사하면, JSON 문법만
-        맞고 규칙에 어긋난 행이 새 파일에도 그대로 남는다. 덧붙이는 경로라도
-        파일 전체를 다시 쓰는 이상 같은 기준을 적용한다.
-        """
-        for tx in read(
-            self.data.transactions, Transaction.from_dict, label="거래", strict=True
-        ):
+    def rows(self) -> Iterator[dict[str, Any]]:
+        """검증을 거친 거래를 다시 dict 로 흘린다. 파일을 다시 쓸 때 쓴다."""
+        for tx in self.stream_transactions():
             yield tx.to_dict()
 
     # ── 카테고리 관리 ────────────────────────────────────────────────────
@@ -236,7 +206,7 @@ class Ledger:
         category = normalize_category(name)
         # 카테고리 파일 검사를 먼저 끝낸다. 거래를 옮긴 뒤에 이 파일이 손상된 걸
         # 알게 되면, 명령은 실패했는데 거래만 바뀐 상태로 남는다.
-        registered = self.categories(strict=True)
+        registered = self.categories()
         if category not in registered:
             raise NotFoundError(
                 f"등록되지 않은 카테고리입니다: {category}", "category list 로 확인하세요."
@@ -332,7 +302,7 @@ class Ledger:
                 )
         store = self.data.transactions
         rows = [tx.to_dict() for tx in transactions]
-        store.write_all(chain(self.strict_rows(), rows))
+        store.write_all(chain(self.rows(), rows))
         return transactions
 
 
