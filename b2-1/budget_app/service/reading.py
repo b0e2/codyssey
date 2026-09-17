@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterator, TypeVar
 
-from budget_app.models import StorageError, ValidationError
+from budget_app.errors import StorageError, ValidationError
 from budget_app.storage import JsonlStore
 
 T = TypeVar("T")

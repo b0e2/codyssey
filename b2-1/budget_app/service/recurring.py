@@ -6,18 +6,9 @@
 
 from __future__ import annotations
 
-from budget_app.models import (
-    NotFoundError,
-    Transaction as _Transaction,
-    RecurringRule,
-    StorageError,
-    Transaction,
-    ValidationError,
-    clamp_day,
-    format_tx_id,
-    new_rule_id,
-    parse_month,
-)
+from budget_app.errors import NotFoundError, StorageError, ValidationError
+from budget_app.validators import clamp_day, format_tx_id, new_rule_id, parse_month
+from budget_app.models import RecurringRule, Transaction, Transaction
 from budget_app.service.ledger import Ledger
 from budget_app.service.reading import read
 
@@ -117,7 +108,7 @@ class Recurring:
                 )
                 continue
             created.append(
-                _Transaction(
+                Transaction(
                     id=format_tx_id(next_seq),
                     date=clamp_day(target, rule.day),
                     type=rule.type,

@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from budget_app.models import StorageError
+from budget_app.errors import StorageError
 from budget_app.storage import DEFAULT_CATEGORIES, DataDir, JsonlStore
 
 
