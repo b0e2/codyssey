@@ -255,3 +255,29 @@ class RecurringE2ETest(CommandTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RecurringSkipTest(CommandTestCase):
+    def test_skipped_rule_is_reported(self) -> None:
+        # 카테고리가 사라져 건너뛴 규칙을 알리지 않으면
+        # "생성할 내역이 없다"와 구분되지 않는다.
+        #
+        # `category remove` 는 규칙이 쓰는 카테고리를 막으므로, 이 상태는 파일을
+        # 직접 고쳤을 때만 생긴다. 그래도 조용히 넘어가서는 안 된다.
+        added = self.run_cmd(
+            "recurring", "add", stdin="월세\n25\nexpense\nrent\n500000\n\n\n"
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+
+        categories = self.data / "categories.jsonl"
+        kept = [
+            line
+            for line in categories.read_text(encoding="utf-8").splitlines()
+            if '"rent"' not in line
+        ]
+        categories.write_text("\n".join(kept) + "\n", encoding="utf-8")
+
+        result = self.run_cmd("recurring", "apply", "--month", "2024-03")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("월세", result.stderr)
+        self.assertIn("건너뜁니다", result.stderr)
