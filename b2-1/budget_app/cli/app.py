@@ -140,7 +140,7 @@ def cmd_category(ctx: Context, args: Namespace) -> int:
         return 0
 
     if args.action == "add":
-        name = ask("카테고리명", ledger.add_category)
+        name = ask("카테고리명", Categories(ledger).add)
         print(f"[저장 완료] category={name}")
         return 0
 
