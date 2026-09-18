@@ -321,6 +321,8 @@ def _recurring_remove(recurring: Recurring, ledger: Ledger, args: Namespace) -> 
 
 def _recurring_apply(recurring: Recurring, ledger: Ledger, args: Namespace) -> int:
     created = recurring.apply(args.month)
+    # 건너뛴 규칙을 알리지 않으면 "생성할 내역이 없다"와 구분되지 않는다.
+    warn(*recurring.warnings)
     if not created:
         print(f"[안내] {args.month} 에 새로 생성할 반복 내역이 없습니다.")
         return 0
