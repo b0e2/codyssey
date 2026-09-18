@@ -57,6 +57,53 @@ class HelpTest(CommandTestCase):
         self.assertIn("usage:", result.stdout)
 
 
+class EveryCommandRunsTest(CommandTestCase):
+    """모든 명령을 실제로 한 번씩 실행한다.
+
+    `--help` 만 확인하면 파서에 등록됐는지만 알 수 있다. 핸들러가 없는 메서드를
+    부르고 있어도 통과한다. 실제로 `category add` 가 옮겨간 메서드를 부르고 있었고
+    이 테스트가 없어 224개가 모두 통과한 채로 남아 있었다.
+    """
+
+    def test_no_command_raises_an_unexpected_error(self) -> None:
+        out = self.root / "out.csv"
+        rule_id = self._register_rule()
+
+        steps: list[tuple[list[str], str]] = [
+            (["add"], "2024-01-15\nexpense\nfood\n15000\n점심\nmeal\n"),
+            (["list"], ""),
+            (["search", "--q", "점심"], ""),
+            (["summary", "--month", "2024-01"], ""),
+            (["budget", "set", "--month", "2024-01", "--amount", "500000"], ""),
+            (["budget", "list"], ""),
+            (["category", "add"], "hobby\n"),
+            (["category", "list"], ""),
+            (["category", "remove", "--name", "hobby"], ""),
+            (["update", "--id", "TX-000001", "--amount", "20000"], ""),
+            (["export", "--out", str(out), "--month", "2024-01"], ""),
+            (["import", "--from", str(out)], ""),
+            (["backup"], ""),
+            (["repair"], ""),
+            (["recurring", "list"], ""),
+            (["recurring", "apply", "--month", "2024-02"], ""),
+            (["recurring", "remove", "--id", rule_id], ""),
+            (["delete", "--id", "TX-000001"], ""),
+        ]
+
+        for args, stdin in steps:
+            with self.subTest(command=" ".join(args)):
+                result = self.run_cmd(*args, stdin=stdin)
+                self.assertNotIn("예상치 못한 오류", result.stderr)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def _register_rule(self) -> str:
+        result = self.run_cmd(
+            "recurring", "add", stdin="월세\n25\nexpense\nrent\n500000\n\n\n"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.split("id=")[1].split()[0]
+
+
 class HappyPathTest(CommandTestCase):
     def test_add_list_summary(self) -> None:
         self.add("2024-01-15", "expense", "food", "15000")
