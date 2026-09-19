@@ -1,261 +1,266 @@
-# 내 컴퓨터에 개발자용 '작업실' 꾸미기
+# Docker Development Workstation
 
-> 코드가 "내 컴퓨터에서만 돌아가는" 문제를 없애기 위해, **터미널 · Docker · Git**으로
-> 재현 가능한 로컬 개발 환경을 직접 세팅하고, 그 과정을 **명령 · 출력 · 스크린샷**으로 검증한 기록이다.
+<p align="center">
+  <b>터미널부터 Docker Compose까지 직접 구성한 개발 환경 실습</b><br/>
+  FastAPI와 Redis 서비스를 컨테이너로 실행하며 이미지, 네트워크, 볼륨과 운영 명령을 검증한 프로젝트
+</p>
 
-![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white)![Docker](https://img.shields.io/badge/Docker-28.5.2-2496ED?logo=docker&logoColor=white)![Git](https://img.shields.io/badge/Git-2.x-F05032?logo=git&logoColor=white)[![GitHub](https://img.shields.io/badge/GitHub-b0e2%2Fcodyssey--e1--1-181717?logo=github&logoColor=white)](https://github.com/b0e2/codyssey-e1-1)
-
-
-### 목차
-
-| 기초 | Docker · 컨테이너 | 협업 · 정리 |
-|---|---|---|
-| [1. 프로젝트 개요](#1-프로젝트-개요) | [4. 검증 방법과 증거](#4-검증-방법-및-결과-위치) | [7. 보너스 과제](#7-보너스-과제) |
-| [2. 실행 환경](#2-실행-환경) | [5. 커스텀 이미지](#5-커스텀-이미지-b안) | [8. 트러블슈팅](#8-트러블슈팅) |
-| [3. 수행 체크리스트](#3-수행-체크리스트) | [6. 개념 정리](#6-개념-정리-왜-이런-설계인가) | [9. 디렉토리 구조](#9-디렉토리-구조) |
-| | | [10. 재현 방법](#10-재현-방법) |
+<p align="center">
+  <img src="https://img.shields.io/badge/Docker-28-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/Docker%20Compose-v2-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Compose" />
+  <img src="https://img.shields.io/badge/FastAPI-0.140-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis" />
+  <img src="https://img.shields.io/badge/Git-GitHub-F05032?style=flat-square&logo=git&logoColor=white" alt="Git and GitHub" />
+</p>
 
 ---
 
-## 1) 프로젝트 개요
+## Overview
 
-코드가 "내 컴퓨터에서만" 돌아가는 문제를 줄이고, 누구나 같은 방식으로 실행·배포·디버깅할 수 있는 환경을 구성하는 것이 목표다.
+이 프로젝트는 로컬 개발 환경을 직접 구성하며 터미널, 파일 권한, Git, Docker와 Docker Compose의 동작을 확인한 실습 기록입니다.
 
-- 터미널(CLI)로 작업 디렉토리와 파일 권한을 정리
-- Docker를 설치·점검하고 컨테이너를 실행/관리
-- FastAPI 웹 서버를 직접 작성한 Dockerfile로 컨테이너화
-- 포트 매핑으로 외부 접속을 확인하고, 바인드 마운트/볼륨으로 "변경 반영"과 "데이터 영속성"을 검증
-- Git/GitHub로 전체 과정을 버전 관리
+FastAPI 웹 서비스와 Redis를 예제 애플리케이션으로 사용해 컨테이너 이미지 빌드, 포트 연결, 볼륨, 서비스 간 통신과 운영 명령을 단계별로 검증했습니다. 실행 결과는 Markdown 문서와 원본 터미널 로그로 함께 남겼습니다.
 
----
+## Problem
 
-## 2) 실행 환경
+개발 도구를 설치하는 것만으로는 실제 동작 원리를 이해하기 어렵습니다.
 
-| 항목 | 값 |
-|---|---|
-| OS | macOS |
-| Shell | zsh (로그 녹화 시 bash 사용) |
-| 터미널 | VSCode 통합 터미널 / macOS 기본 터미널 |
-| Docker | 28.5.2 (OrbStack 기반) |
-| Docker Compose | v2.40.3 |
-| Git | 2.x |
-| Python | 3.12.13 (로컬), 3.10 (컨테이너 내부, ubuntu:22.04 기본) |
+- 이미지와 컨테이너의 차이가 명확하지 않음
+- 컨테이너 내부 포트가 호스트에서 바로 열리는 것으로 오해하기 쉬움
+- bind mount와 Docker volume의 사용 목적이 섞이기 쉬움
+- `docker exec`와 `docker attach`의 종료 동작이 다름
+- 여러 서비스를 수동 명령으로 실행하면 환경을 재현하기 어려움
+- 성공 결과만 기록하면 오류 원인과 해결 과정을 다시 확인하기 어려움
 
-Docker 설치 및 데몬 동작 확인 결과 (발췌):
+## Solution
 
-```
-$ docker --version
-Docker version 28.5.2, build ecc6942
+- 명령을 직접 실행하고 입력과 출력을 세션 로그로 저장
+- Ubuntu 기반 이미지를 직접 구성해 Python 실행 환경 설치 과정 확인
+- 비루트 사용자와 health check를 포함한 Dockerfile 작성
+- FastAPI와 Redis를 Compose 서비스로 분리
+- Compose 서비스 이름을 내부 DNS 주소로 사용
+- 실패한 명령과 해결 과정도 별도의 트러블슈팅 문서로 기록
 
-$ docker info
-Client:
- Version:    28.5.2
- Context:    orbstack
-...
-Server:
- Server Version: 28.5.2
- Storage Driver: overlay2
- Operating System: OrbStack
- OSType: linux
- CPUs: 6
- Total Memory: 15.67GiB
-```
+## Core Features
 
-전체 출력 → [03-docker-basic-session.md](docs/md/03-docker-basic-session.md)
+- 터미널 파일 및 디렉터리 명령 실습
+- Unix 파일 권한과 `chmod` 검증
+- Docker 이미지와 컨테이너 생명주기 확인
+- 사용자 정의 Docker 이미지 빌드
+- 호스트와 컨테이너 포트 매핑
+- bind mount와 named volume 비교
+- 볼륨 백업과 복구
+- `docker exec`와 `docker attach` 차이 검증
+- Docker Compose 기반 FastAPI와 Redis 실행
+- GitHub HTTPS 및 SSH 인증 구성
+- 실습별 Markdown 문서와 원본 터미널 로그 보관
 
-> 서울캠퍼스 환경의 sudo 권한 제약으로 인해, Docker Desktop 대신 **OrbStack**을 사용해 Docker 엔진을 구동했다.
+## Application
 
----
+예제 애플리케이션은 FastAPI 웹 서비스와 Redis로 구성됩니다.
 
-## 3) 수행 체크리스트
+| 경로 | 동작 |
+| --- | --- |
+| `GET /` | Redis의 `visit_count`를 증가시키고 현재 값을 반환 |
+| `GET /health` | 컨테이너 상태 확인용 `{"status":"ok"}` 반환 |
+| `GET /docs` | FastAPI가 제공하는 OpenAPI 문서 |
 
-### 필수 과제
-
-- [x] 터미널 기본 조작 및 폴더 구성
-- [x] 권한 변경 실습 (파일 1, 디렉토리 1)
-- [x] Docker 설치/점검
-- [x] Docker 기본 운영 명령 (images / ps / logs / stats)
-- [x] hello-world 실행
-- [x] ubuntu 컨테이너 진입 및 attach/exec 차이 관찰
-- [x] Dockerfile 작성 및 커스텀 이미지 빌드 (B안: Linux 베이스 + 패키지/사용자/환경변수/헬스체크)
-- [x] 포트 매핑 접속 (2회)
-- [x] 포트 충돌 진단 (lsof → 프로세스 확인 → 포트 변경)
-- [x] 바인드 마운트 반영 확인
-- [x] 볼륨 영속성 검증
-- [x] 볼륨 백업/복원 (tar 아카이브)
-- [x] Git 설정 + GitHub/VSCode 연동
-- [x] GitHub push 로그 기록
-- [x] 트러블슈팅 2건 이상
-
-### 보너스 과제
-
-- [x] Docker Compose 단일 서비스
-- [x] Compose 멀티 컨테이너 (web + redis)
-- [x] 컨테이너 간 네트워크 통신 확인
-- [x] Compose 운영 명령 (up/down/ps/logs)
-- [x] 환경 변수 활용
-- [x] GitHub SSH 키 설정
-
----
-
-## 4) 검증 방법 및 결과 위치
-
-| # | 수행 항목 | 검증 방법 (사용 명령) | 결과 |
-|---|---|---|---|
-| 01 | 터미널 기본 조작 | `pwd`, `ls -la`, `mkdir`, `cd`, `touch`, `cat`, `cp`, `mv`, `rm` | [01-terminal-session.md](docs/md/01-terminal-session.md) |
-| 02 | 권한 변경 실습 | `chmod 700` / `chmod 755` 전/후 `ls -l` 비교, `cp`/`mv`/`rm`로 실습 파일 정리 | [02-terminal-permissions.md](docs/md/02-terminal-permissions.md) |
-| 03 | Docker 설치/점검 | `docker --version`, `docker info` | [03-docker-basic-session.md](docs/md/03-docker-basic-session.md) |
-| 04 | Docker 기본 운영 + 컨테이너 실행 | `docker images`, `docker ps -a`, `docker logs`, `docker stats`, `docker run hello-world`, `docker run -it ubuntu bash` | [04-docker-run-session.md](docs/md/04-docker-run-session.md) |
-| — | attach vs exec 차이 관찰 | `docker exec` 후 `exit` → 유지 / `docker attach` 후 `Ctrl+C` → 종료, `docker ps`로 전후 비교 | [attach-exec-session.md](docs/md/attach-exec-session.md) |
-| 05 | 커스텀 이미지 빌드 + 포트 매핑 | `docker build`, `docker run -d -p 8080:8000` / `-p 8081:8000`, `curl`, 브라우저 접속 | [05-docker-build-session.md](docs/md/05-docker-build-session.md) |
-| 05-1 | 포트 충돌 진단 | `lsof -nP -i :8080`으로 점유 프로세스 확인 후 호스트 포트를 8082로 변경 재실행 | [05-1-port-conflict-session.md](docs/md/05-1-port-conflict-session.md) |
-| 06 | 바인드 마운트 + 볼륨 영속성 + 백업/복원 | 호스트 파일 수정 반영 확인 / 컨테이너 삭제 후 데이터 유지 / `tar`로 볼륨 백업→삭제→복원 검증 | [06-volume-session.md](docs/md/06-volume-session.md) |
-| 07 | Git 설정 + GitHub 연동 + Push | `git config --list`, VSCode 연동, `git push origin main` 원격 반영 출력 | [07-git-setup-session.md](docs/md/07-git-setup-session.md) |
-
-### 증거 자료 (스크린샷)
-
-| 항목 | 파일 |
-|---|---|
-| 포트 매핑 접속 (8080) | [port-8080-docs.png](docs/assets/port-8080-docs.png) |
-| 포트 매핑 접속 (8081) | [port-8081-health.png](docs/assets/port-8081-health.png) |
-| VSCode GitHub 연동 | [vscode-github.png](docs/assets/vscode-github.png) |
-
----
-
-## 5) 커스텀 이미지 (B안)
-
-**선택한 베이스**: `ubuntu:22.04` (순수 Linux 배포판)
-
-| 커스텀 포인트 | 목적 |
-|---|---|
-| `apt-get install python3 python3-pip` | 베이스 이미지에 없는 Python 런타임을 직접 설치 |
-| `RUN useradd --create-home appuser` + `USER appuser` | 컨테이너를 root가 아닌 전용 유저로 실행하여 권한 최소화 |
-| `ENV PORT`, `ENV APP_ENV` | 설정값을 코드에서 분리하여 실행 환경별로 주입 가능하게 함 |
-| `HEALTHCHECK` (30초 간격 `/health` 확인) | Docker가 앱 생존 여부를 자동 감시, `docker ps`에서 `(healthy)` 확인 |
-| `CMD uvicorn --host 0.0.0.0` | 컨테이너 외부에서 접근 가능하도록 바인딩 (`127.0.0.1`이면 포트 매핑해도 접속 불가) |
-
-빌드/실행 명령 및 결과 → [05-docker-build-session.md](docs/md/05-docker-build-session.md)
-
-**소스 코드**
-- 웹 서버: [app/main.py](app/main.py)
-- 의존성: [app/requirements.txt](app/requirements.txt)
-- Dockerfile: [app/Dockerfile](app/Dockerfile)
-
----
-
-## 6) 개념 정리 (왜 이런 설계인가)
-
-실습 결과를 넘어, 이 미션의 구조적 원칙을 스스로 설명할 수 있도록 핵심 개념을 정리한다.
-
-### 이미지 vs 컨테이너 — 불변성
-
-- **이미지**: 빌드 시점에 고정된 읽기 전용 템플릿(레이어 스택)이다. 같은 이미지는 몇 번을 실행해도 동일하다 → 불변(immutable).
-- **컨테이너**: 이미지를 실행한 인스턴스다. 이미지 레이어 위에 얇은 '쓰기 가능 레이어'를 얹어 동작한다. 컨테이너 안에서 파일을 바꿔도 원본 이미지는 그대로다.
-- **사례**: 실행 중인 컨테이너에서 `apt-get install ...`을 해도, 같은 이미지로 새 컨테이너를 띄우면 그 패키지는 없다(변경은 그 컨테이너의 쓰기 레이어에만 존재). 변경을 영구화하려면 `docker commit` 또는 Dockerfile로 새 이미지를 빌드한다.
-
-```
-# 컨테이너 안에서만 파일을 추가해도 이미지에는 반영되지 않는다
-$ docker run -d --name c1 ubuntu:22.04 sleep 300
-$ docker exec c1 bash -c "touch /tmp/only-in-c1 && ls /tmp"
-only-in-c1
-$ docker run --rm ubuntu:22.04 ls /tmp   # 같은 이미지로 띄운 새 컨테이너
-                                          # → /tmp/only-in-c1 없음 (이미지는 불변)
+```json
+{"message":"Hello","visit_count":1}
 ```
 
-→ 그래서 유지해야 할 데이터는 컨테이너가 아니라 **볼륨**에 둔다. (참고: [06-volume-session.md](docs/md/06-volume-session.md))
+요청을 반복하면 Redis에 저장된 방문 횟수가 증가합니다.
 
-### 네트워크 네임스페이스와 포트 노출
+## Architecture
 
-- 각 컨테이너는 독립된 **네트워크 네임스페이스**를 가진다(자체 IP·포트 공간·인터페이스). 그래서 컨테이너 내부의 8000 포트는 호스트의 8000과 별개다.
-- 포트 매핑 `-p 8080:8000`은 호스트 네임스페이스의 8080을 컨테이너의 8000에 잇는 '다리' 역할을 한다. 이 매핑이 없으면 호스트에서 컨테이너 내부 포트에 접근할 수 없다.
-- **보안**: `-p 8080:8000`은 기본적으로 `0.0.0.0`(모든 인터페이스)에 바인딩되어 같은 LAN의 다른 기기도 접근할 수 있다. 로컬 개발이나 민감한 서비스는 `-p 127.0.0.1:8080:8000`처럼 루프백에만 노출하는 것이 안전하다.
-- 한편 앱의 `uvicorn --host 0.0.0.0`은 '컨테이너 네임스페이스 안에서' 모든 인터페이스 수신을 뜻할 뿐이며, 실제 외부 노출 범위는 호스트의 `-p` 바인딩이 결정한다.
-
-### 절대 경로 vs 상대 경로 — 선택 기준
-
-- **절대 경로**(`~/codyssey-e1-1/test/bind-test`): 위치가 명확해 어디서 실행하든 같은 대상을 가리킨다(명시성). 바인드 마운트처럼 '호스트의 특정 위치'를 못박아야 할 때 쓴다. 단점은 머신마다 홈 경로가 달라 이식성이 낮다는 것이다.
-- **상대 경로**(`./app`, `site/`): 현재 작업 디렉토리(cwd) 기준이라, 저장소를 클론한 누구나 동일하게 동작한다(이식성). 단점은 실행 위치에 의존한다는 것이다.
-- **지침**: Dockerfile의 `COPY`나 컨테이너 내부 경로는 상대 경로(이식성)를, 호스트 바인드 마운트 소스는 `$(pwd)`/`~` 확장 또는 절대 경로(명시성)를 권장한다.
-
-### 파일 권한 표기 (755 / 644)
-
-- 권한은 소유자(user) / 그룹(group) / 기타(other) 3자리로 표현하며, 각 자리는 `r=4`, `w=2`, `x=1`의 합이다.
-- `755` → 소유자 `rwx`(7), 그룹 `r-x`(5), 기타 `r-x`(5). 실행 파일/디렉토리에 흔히 쓴다.
-- `644` → 소유자 `rw-`(6), 그룹 `r--`(4), 기타 `r--`(4). 일반 문서/설정 파일에 쓴다.
-- 실습 로그 → [02-terminal-permissions.md](docs/md/02-terminal-permissions.md)
-
----
-
-## 7) 보너스 과제
-
-| # | 항목 | 검증 방법 | 결과 |
-|---|---|---|---|
-| 08 | Compose 단일 서비스 | `docker-compose.yml` 작성 후 `docker compose up -d --build` | [08-compose-single-clean-session.md](docs/md/08-compose-single-clean-session.md) |
-| 09 | Compose 멀티 컨테이너 (web + redis) | 두 서비스 동시 기동 후 `curl`로 `visit_count` 증가 확인 | [09-compose-multi-session.md](docs/md/09-compose-multi-session.md) |
-| 09 | 컨테이너 간 네트워크 통신 | `REDIS_HOST=redis` 서비스명으로 접근, 카운터 값 1→2→3 증가로 통신 증명 | [09-compose-multi-session.md](docs/md/09-compose-multi-session.md) |
-| 09 | 환경 변수 활용 | Compose에서 `APP_ENV`, `REDIS_HOST` 주입 → 코드에서 `os.environ.get()`으로 수신 | [09-compose-multi-session.md](docs/md/09-compose-multi-session.md) |
-| 10 | Compose 운영 명령 | `up`, `ps`, `logs`, `down` 전체 루틴 수행 | [10-compose-ops-session.md](docs/md/10-compose-ops-session.md) |
-| 11 | GitHub SSH 키 설정 | 키 생성 → 공개키 등록 → `ssh -T git@github.com` 인증 확인 → SSH로 push | [11-ssh-key.md](docs/md/11-ssh-key.md) |
-
-**Compose 설정 파일**: [app/docker-compose.yml](app/docker-compose.yml)
-
----
-
-## 8) 트러블슈팅
-
-수행 과정에서 실제로 겪은 문제와 해결 과정을 정리했다.
-
-| # | 문제 | 원인 | 상세 |
-|---|---|---|---|
-| 1 | `docker volume rm` 실행 시 `volume is in use` 에러 | 해당 볼륨을 사용 중인 컨테이너가 아직 실행 중이었음 | [troubleshooting.md](docs/md/troubleshooting.md) |
-| 2 | `script` 로그 녹화 시 이스케이프 코드로 로그가 깨짐 | zsh 테마(powerlevel10k)가 출력하는 색상/커서 제어 문자가 함께 녹화됨 | [troubleshooting.md](docs/md/troubleshooting.md) |
-| 3 | Compose 기동 시 컨테이너가 계속 재시작됨 | `redis.Redis()` 파라미터명 오타 (`decode_response` → `decode_responses`) | [09-compose-multi-session.md](docs/md/09-compose-multi-session.md) |
-| 4 | `docker run -p` 실행 시 `port is already allocated` 에러 | 호스트 8080 포트를 이미 다른 컨테이너가 점유 중이었음 | [05-1-port-conflict-session.md](docs/md/05-1-port-conflict-session.md) |
-
-전체 트러블슈팅 문서 → [troubleshooting.md](docs/md/troubleshooting.md)
-
----
-
-## 9) 디렉토리 구조
-
-```
-codyssey-e1-1/
-├── README.md
-├── app/                      # 웹 서버 소스 및 컨테이너 설정
-│   ├── main.py
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── test/                     # 실습 디렉토리 모음
-│   ├── box/                  # 터미널 기본 조작 실습
-│   ├── perm/                 # 권한 변경 실습
-│   └── bind-test/            # 바인드 마운트 실습
+```text
+e1-1/
+├── app/
+│   ├── main.py              FastAPI 엔드포인트와 Redis 연결
+│   ├── requirements.txt     Python 패키지 버전
+│   ├── Dockerfile           Ubuntu 기반 웹 이미지
+│   └── docker-compose.yml   web과 redis 서비스 구성
+├── test/
+│   ├── box/                 터미널 파일 명령 실습
+│   ├── perm/                파일 권한 실습
+│   └── bind-test/           bind mount 동작 확인
 └── docs/
-    ├── md/                   # 정리된 수행 로그 (마크다운)
-    ├── assets/               # 스크린샷 증거 자료
-    └── logs/                 # script 명령으로 녹화한 원본 세션 로그
+    ├── md/                  단계별 실습과 트러블슈팅 문서
+    ├── logs/                원본 터미널 세션
+    └── assets/              브라우저와 VS Code 스크린샷
 ```
 
-> **소스 코드(`app/`)** · **실습 디렉토리(`test/`)** · **수행 증거(`docs/`)** 를 명확히 분리해, 평가자가 재현 코드와 수행 로그를 각각 독립적으로 확인할 수 있도록 구성했다.
+Dockerfile은 `ubuntu:22.04`에서 Python과 pip를 직접 설치합니다. 애플리케이션은 비루트 사용자인 `appuser`로 실행되며 `/health`를 사용한 health check를 포함합니다.
 
----
+## Data Flow
 
-## 10) 재현 방법
+```text
+[브라우저 또는 curl]
+        │ localhost:8080
+        ▼
+Docker 포트 매핑 8080:8000
+        │
+        ▼
+web 컨테이너
+Uvicorn → FastAPI
+        │ REDIS_HOST=redis
+        ▼
+Compose 내부 네트워크와 서비스 DNS
+        │
+        ▼
+redis 컨테이너
+visit_count 증가
+        │
+        ▼
+JSON 응답 반환
+```
+
+호스트에서는 `localhost:8080`으로 접근하지만, 웹 컨테이너는 Compose 서비스 이름인 `redis`를 주소로 사용합니다.
+
+## Docker Compose
+
+```yaml
+services:
+  web:
+    build: .
+    ports:
+      - "8080:8000"
+    environment:
+      - APP_ENV=production
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+```
+
+`depends_on`은 Redis 컨테이너를 먼저 시작하도록 순서를 정하지만, 애플리케이션 수준의 준비 완료까지 보장하지는 않습니다.
+
+## Technical Highlights
+
+| Area | Decision | Impact |
+| --- | --- | --- |
+| Base Image | `ubuntu:22.04`에서 Python을 직접 설치 | 런타임 도구가 이미지에 추가되는 과정 확인 |
+| Container User | `appuser` 비루트 사용자로 실행 | 애플리케이션의 root 권한 사용 방지 |
+| Health Check | `/health`를 주기적으로 호출 | 프로세스 실행 여부가 아닌 서비스 응답 상태 확인 |
+| Service Discovery | Redis 주소로 Compose 서비스 이름 사용 | IP를 직접 관리하지 않고 내부 DNS로 연결 |
+| Port Mapping | 호스트 8080을 컨테이너 8000에 연결 | 네트워크 네임스페이스 분리와 외부 노출 확인 |
+| Persistence Practice | bind mount와 named volume을 각각 실습 | 소스 공유와 데이터 보존 목적을 구분 |
+| Reproducibility | Compose 파일에 서비스 구성을 선언 | 동일한 웹과 Redis 환경을 한 명령으로 재현 |
+| Documentation | 가공 문서와 원본 세션 로그를 함께 보관 | 결과뿐 아니라 실행 과정도 다시 검증 가능 |
+
+## Concepts
+
+### Image and Container
+
+이미지는 읽기 전용 레이어의 묶음이고, 컨테이너는 이미지 위에 쓰기 가능한 레이어를 추가한 실행 인스턴스입니다. 실행 중인 컨테이너에 만든 파일은 새 컨테이너를 생성할 때 유지되지 않습니다.
+
+### Bind Mount and Volume
+
+| 방식 | 적합한 용도 |
+| --- | --- |
+| bind mount | 호스트 소스 파일을 컨테이너와 실시간으로 공유 |
+| named volume | Docker가 관리하는 애플리케이션 데이터 보존 |
+
+### `exec` and `attach`
+
+- `docker exec`는 실행 중인 컨테이너 안에 별도 프로세스를 만듭니다.
+- `docker attach`는 컨테이너의 메인 프로세스에 직접 연결합니다.
+- attach 상태에서 메인 프로세스를 종료하면 컨테이너도 함께 종료될 수 있습니다.
+
+## Running Locally
+
+Docker Desktop 또는 OrbStack처럼 Docker 데몬을 제공하는 환경이 필요합니다.
 
 ```bash
-# 저장소 클론
-git clone https://github.com/b0e2/codyssey-e1-1.git
-cd codyssey-e1-1/app
+git clone https://github.com/b0e2/codyssey.git
+cd codyssey/e1-1/app
 
-# Compose로 전체 스택 실행 (web + redis)
 docker compose up -d --build
+```
 
-# 동작 확인
-curl http://localhost:8080/health     # {"status":"ok"}
-curl http://localhost:8080            # {"message":"Hello","visit_count":N}
+동작을 확인합니다.
 
-# 종료
+```bash
+curl http://localhost:8080/health
+curl http://localhost:8080
+curl http://localhost:8080
+```
+
+상태와 로그를 확인하고 종료합니다.
+
+```bash
+docker compose ps
+docker compose logs web
+docker compose logs redis
 docker compose down
 ```
 
-> OrbStack(또는 Docker Desktop)이 실행 중이어야 한다.
+### Dockerfile만 실행
+
+```bash
+docker build -t my-web:1.0 .
+docker run -d -p 8080:8000 --name my-web-8080 my-web:1.0
+curl http://localhost:8080/health
+docker rm -f my-web-8080
+```
+
+## Verification
+
+이 프로젝트에는 자동화된 단위 테스트가 없습니다. 각 단계의 명령과 실제 출력은 `docs/md/`와 `docs/logs/`에 기록되어 있습니다.
+
+| 영역 | 문서 |
+| --- | --- |
+| 터미널 명령 | `docs/md/01-terminal-session.md` |
+| 파일 권한 | `docs/md/02-terminal-permissions.md` |
+| Docker 환경 | `docs/md/03-docker-basic-session.md` |
+| 컨테이너 실행 | `docs/md/04-docker-run-session.md` |
+| 이미지와 포트 | `docs/md/05-docker-build-session.md` |
+| 볼륨과 백업 | `docs/md/06-volume-session.md` |
+| Git과 GitHub | `docs/md/07-git-setup-session.md` |
+| Compose 단일 서비스 | `docs/md/08-compose-single-clean-session.md` |
+| Compose 다중 서비스 | `docs/md/09-compose-multi-session.md` |
+| Compose 운영 | `docs/md/10-compose-ops-session.md` |
+| SSH 인증 | `docs/md/11-ssh-key.md` |
+| exec와 attach | `docs/md/attach-exec-session.md` |
+| 오류와 해결 | `docs/md/troubleshooting.md` |
+
+Compose 설정은 다음 명령으로 확인할 수 있습니다.
+
+```bash
+docker compose config
+```
+
+## Screens
+
+| API 문서 | Health Check |
+| --- | --- |
+| ![FastAPI 문서](docs/assets/port-8080-docs.png) | ![Health Check](docs/assets/port-8081-health.png) |
+
+![VS Code GitHub 연동](docs/assets/vscode-github.png)
+
+## Troubleshooting
+
+| Issue | Approach | Result |
+| --- | --- | --- |
+| 호스트 포트가 이미 사용 중 | `lsof -nP -i :8080`으로 프로세스 확인 후 다른 호스트 포트 사용 | 컨테이너 내부 포트는 유지한 채 충돌 해결 |
+| Redis 연결 코드 오타로 web 재시작 반복 | `docker compose logs web`에서 traceback 확인 | `decode_responses`로 수정 후 정상 연결 |
+| 사용 중인 volume 삭제 실패 | 해당 volume을 참조하는 컨테이너를 먼저 제거 | volume 삭제와 복구 실습 완료 |
+| 터미널 녹화 로그에 제어 문자가 포함됨 | 셸 테마와 자동 제안이 없는 환경에서 다시 기록 | 읽을 수 있는 원본 세션 확보 |
+
+## Known Limitations
+
+- Redis 영속 볼륨이 없어 컨테이너를 다시 생성하면 방문 횟수가 초기화됩니다.
+- `depends_on`만 사용하므로 Redis 준비 상태를 확인하는 재시도 로직은 없습니다.
+- 기본 포트 매핑은 모든 네트워크 인터페이스에 열릴 수 있습니다. 로컬 전용이면 `127.0.0.1:8080:8000`을 사용해야 합니다.
+- 자동화된 테스트와 CI는 없으며 문서화된 수동 검증을 사용합니다.
+- `test/` 폴더는 애플리케이션 테스트가 아니라 터미널, 권한과 mount 실습 파일입니다.
+
+## Roadmap
+
+- Redis 데이터 영속 volume 추가
+- Redis health check와 web 시작 조건 구성
+- Compose smoke test 자동화
+- 이미지 크기와 build cache 비교
+- GitHub Actions에서 Docker 이미지 빌드 검증
