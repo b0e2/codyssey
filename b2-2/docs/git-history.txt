@@ -1,0 +1,96 @@
+# git log --oneline --graph --all
+
+* a3a88b8 docs: 팀 병합 및 리뷰 참여 확인 결과 반영
+*   6151049 Merge branch 'main' into feature/jeongbeen-final-evidence
+|\
+| *   5850f8d Merge pull request #20 from gitflow-practice-team/feature/juseong-contributing-prohibitions
+| |\
+| | *   9e1d89b docs: CONTRIBUTING 충돌 해결 및 main 반영
+| | |\
+| | |/
+| |/|
+| | * afe9eb2 docs: distinguish rebase rules for shared vs personal branches
+| | * be43e30 docs: add prohibitions and collaboration flow to CONTRIBUTING
+* | | 3e31e0a docs: Git 히스토리 최신화
+* | | 3d3bd31 docs: 중복된 충돌 기록 정리
+* | | 55114c2 docs: 충돌 기록 추가 후 Git 히스토리 갱신
+* | | 70e7f69 docs: CONTRIBUTING 충돌 해결 과정 기록 추가
+* | | 9a1abce docs: PR 20 충돌 해결 과정과 히스토리 기록
+* | | 228ae8f docs: 충돌 및 트러블슈팅 완료 상태 반영
+* | | e41fc78 docs: 트러블슈팅 실습 후 Git 히스토리 갱신
+* | | 7ae0ec1 docs: Git 트러블슈팅 4종 실제 실습 결과 기록
+* | | ba08d62 docs: 충돌 해결 커밋 링크와 히스토리 증빙 갱신
+* | | 2484c89 docs: README 충돌 해결 및 과정 기록
+|\| |
+| * |   277b14d Merge pull request #21 from gitflow-practice-team/feature/juseong-learning-notes
+| |\ \
+| | * | 33de0fc docs: correct cohort and clarify proxy vs CORS
+| | * | 18a14ed docs: add concept-focused learning notes for juseong
+| | |/
+* | | a93397f docs: 제출물 인덱스에 통합 PR 링크 추가
+* | | 7dd7edc docs: 제출물 인덱스와 Git 히스토리 증빙 추가
+* | | 62a1836 chore: 문서별 CODEOWNERS 설정
+* | | 3cf1977 docs: Git 트러블슈팅 기록 구조와 stash 실습 추가
+* | | 9a4d85b docs: README 프로젝트 소개 문구 추가
+* | | d482078 docs: interactive rebase 전후 히스토리 기록
+* | | b677adf docs: interactive rebase 실습 내용 정리
+|/ /
+* |   6d48364 Merge pull request #22 from gitflow-practice-team/feature/park-git-collab-rules
+|\ \
+| * | 99a999e docs: 링크 일관성 추가
+| * | 9db25a3 docs: 자기소개와 코드 리뷰 및 Git/GitHub 협업 규칙 문서화
+* | |   1d8e5b0 Merge pull request #19 from gitflow-practice-team/feature/park-conflict-guide
+|\ \ \
+| |/ /
+|/| |
+| * | c38fe96 docs: 충돌 대응 피드백 반영 내용 추가
+| * | 834d7e0 docs: Git 충돌 해결 및 트러블슈팅 가이드 작성
+|/ /
+* |   6a2f164 Merge pull request #14 from gitflow-practice-team/feature/taedong-code-review-guide
+|\ \
+| |/
+|/|
+| * d3650c3 docs: 충돌 기록 내용 수정
+* | 7fe6cb0 Merge pull request #9 from gitflow-practice-team/feature/taedong-code-review-guide
+|\|
+| * e794dc9 docs: 해결 커밋 링크 추가
+| * 094b594 fix: 병합 충돌 해결 및 문서화 작업
+| *   53b2624 Merge branch 'main' into feature/taedong-code-review-guide
+| |\
+| |/
+|/|
+* |   fbc3ab3 Merge pull request #10 from gitflow-practice-team/feature/taedong-introduction-and-study
+|\ \
+| * | ff4121a docs: merge와 관련된 내용 추가
+| * | 265e3f8 docs: 엄태동 자기소개 및 학습 내용 문서화
+* | |   4523cfe Merge pull request #13 from gitflow-practice-team/feature/minwoo-collaboration-guide
+|\ \ \
+| * | | f546534 docs: 커밋 메시지 컨벤션, PR 규칙, PR 병합 조건 내용 작성
+| * | | 67b2942 docs: 팀 브랜치 네이밍 예시 작성
+* | | |   43dc0ca Merge pull request #11 from gitflow-practice-team/feature/minwoo-introduction
+|\ \ \ \
+| |_|/ /
+|/| | |
+| * | | 36102de docs: 오버플로우에 대한 부연 설명 작성
+| * | | c339777 docs: n에 대한 조건 설명 작성
+| |/ /
+| * / 75de895 docs: 육민우 자기소개와 이진 거듭제곱 학습 내용 추가
+|/ /
+| * 6e8eb1b docs: 리뷰 예시 추가
+| * 49f2241 docs: 코드 리뷰 및 반영 규칙 문서화
+|/
+*   0fb39d8 Merge pull request #5 from gitflow-practice-team/feature/jeongbeen-introduction
+|\
+| * 9b58ea5 docs: git stash 복원 방법 설명 보완
+| * 3e573b2 docs: 정빈 자기소개와 Git 학습 내용 추가
+* |   7c39963 Merge pull request #4 from gitflow-practice-team/feature/jeongbeen-collaboration-guide
+|\ \
+| |/
+|/|
+| * 2ab13db docs: 실제 팀원 기준으로 브랜치 예시 수정
+| * 8487cfa docs: 팀 브랜치 및 Issue 협업 규칙 반영
+|/
+* 87daa92 chore: 미션 수행 내용에 맞게 폴더명 및 파일명 변경
+* 9bf1cc7 chore: project setting initial
+* 99a1710 chore: project initial
+* 81a29f8 Initial commit

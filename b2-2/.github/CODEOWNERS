@@ -1,0 +1,16 @@
+# 기본 문서 검토
+*.md @b0e2 @FickleBoBo @TaeDongUm @codyjourney @YiJuseong
+
+# 협업 규칙과 제출 증빙
+/docs/CONTRIBUTING.md @b0e2 @FickleBoBo @TaeDongUm @codyjourney @YiJuseong
+/docs/conflict-resolution.md @TaeDongUm @codyjourney @b0e2
+/docs/troubleshooting-log.md @b0e2 @FickleBoBo @TaeDongUm @codyjourney @YiJuseong
+/docs/rebase-practice.md @b0e2
+/SUBMISSION.md @b0e2 @TaeDongUm
+
+# 팀원별 학습 문서
+/teams/jeongbeen.md @b0e2
+/teams/minwoo.md @FickleBoBo
+/teams/taedong.md @TaeDongUm
+/teams/park.md @codyjourney
+/teams/juseong.md @YiJuseong
