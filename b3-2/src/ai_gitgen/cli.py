@@ -17,6 +17,7 @@ from ai_gitgen.generator import (
     load_convention,
     response_schema_for,
     sanitize_diff,
+    validate_output_config,
 )
 from ai_gitgen.git import GitError, collect_git_context
 
@@ -161,6 +162,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             config=config,
         )
         schema_name, schema = response_schema_for(args.command)
+        validate_output_config(args.command, config)
     except (ConfigurationError, TypeError, ValueError) as error:
         print(f"[ERROR] {error}")
         return 1
@@ -183,8 +185,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             temperature=args.temperature,
             max_tokens=args.max_tokens,
         )
-        output = format_generated_output(args.command, result)
-    except (AIClientError, OutputFormatError) as error:
+        output = format_generated_output(args.command, result, config)
+    except (AIClientError, ConfigurationError, OutputFormatError) as error:
         print(f"[ERROR] {error}")
         print(f"[INFO] API 호출 횟수: {client.request_count}")
         return 1

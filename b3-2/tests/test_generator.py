@@ -19,12 +19,14 @@ from ai_gitgen.ai_client import (
 from ai_gitgen.cli import main
 from ai_gitgen.generator import (
     ConfigurationError,
+    OutputFormatError,
     build_messages,
     format_commit_output,
     format_pr_output,
     load_convention,
     response_schema_for,
     sanitize_diff,
+    validate_output_config,
 )
 from ai_gitgen.git import (
     GitContext,
@@ -361,8 +363,13 @@ def test_build_messages_and_output_formatting() -> None:
         diff="+print('changed')",
         config={"commit": {"prefixes": ["feat", "fix"]}},
     )
+    config = {
+        "commit": {"prefixes": ["feat", "fix"]},
+        "pull_request": {},
+    }
     commit_output = format_commit_output(
-        {"title": "feat: 출력 추가", "body": ["터미널 출력 추가"]}
+        {"title": "feat: 출력 추가", "body": ["터미널 출력 추가"]},
+        config,
     )
     pr_output = format_pr_output(
         {
@@ -370,15 +377,150 @@ def test_build_messages_and_output_formatting() -> None:
             "why": ["초안 생성 필요"],
             "what": ["출력 기능 추가"],
             "how_to_test": ["명령 실행"],
-        }
+        },
+        config,
     )
 
     assert "feature/test" in messages[1]["content"]
     assert "+print('changed')" in messages[1]["content"]
+    assert "모든 자연어는 반드시 한국어" in messages[0]["content"]
     assert "--- Commit Message ---" in commit_output
     assert "## Why" in pr_output
     assert "## What" in pr_output
     assert "## How to Test" in pr_output
+
+
+def test_output_config_rejects_too_short_commit_title_limit() -> None:
+    with pytest.raises(ConfigurationError, match="너무 짧습니다"):
+        validate_output_config(
+            "commit",
+            {"commit": {"title_max_length": 6, "prefixes": ["feat"]}},
+        )
+
+
+def test_commit_output_normalizes_and_truncates() -> None:
+    output = format_commit_output(
+        {
+            "title": f"feat: {'가' * 100}\n두 번째 줄",
+            "body": [
+                "- 첫 번째 변경",
+                "* 두 번째 변경",
+                "3. 세 번째 변경",
+                "네 번째 변경",
+            ],
+        },
+        {"commit": {"title_max_length": 72, "prefixes": ["feat"]}},
+    )
+    lines = output.splitlines()
+
+    assert len(lines[1]) == 72
+    assert lines[1].endswith("…")
+    assert "- 첫 번째 변경" in lines
+    assert "- 두 번째 변경" in lines
+    assert "- 세 번째 변경" in lines
+    assert "네 번째 변경" not in output
+
+
+def test_commit_output_replaces_english_title_with_korean_body() -> None:
+    output = format_commit_output(
+        {
+            "title": "feat: validate generated output",
+            "body": ["생성 결과 형식 검증 추가"],
+        },
+        {"commit": {"prefixes": ["feat"]}},
+    )
+
+    assert "feat: 생성 결과 형식 검증 추가" in output
+
+
+def test_commit_output_revalidates_korean_after_truncation() -> None:
+    output = format_commit_output(
+        {
+            "title": f"feat: {'english ' * 20}한글",
+            "body": ["한국어 대체 제목"],
+        },
+        {"commit": {"prefixes": ["feat"], "title_max_length": 30}},
+    )
+
+    assert output.splitlines()[1] == "feat: 한국어 대체 제목"
+
+
+def test_commit_output_rejects_unconfigured_prefix() -> None:
+    with pytest.raises(OutputFormatError, match="prefix"):
+        format_commit_output(
+            {"title": "docs: 문서 수정", "body": []},
+            {"commit": {"prefixes": ["feat", "fix"]}},
+        )
+
+
+def test_pr_output_applies_title_limit_and_custom_sections() -> None:
+    output = format_pr_output(
+        {
+            "title": "긴 PR 제목을 설정 길이에 맞게 줄이는 변경 사항",
+            "why": ["- 변경 이유"],
+            "what": ["* 변경 내용\n- 추가 항목"],
+            "how_to_test": ["1. pytest 실행\n2. CLI 실행"],
+        },
+        {
+            "pull_request": {
+                "title_max_length": 20,
+                "sections": ["배경", "변경 사항", "테스트"],
+            }
+        },
+    )
+    lines = output.splitlines()
+
+    assert len(lines[1]) <= 20
+    assert lines[1].endswith("…")
+    assert "## 배경" in output
+    assert "## 변경 사항" in output
+    assert "## 테스트" in output
+    assert "- 변경 이유" in output
+    assert "- 변경 내용" in output
+    assert "- 추가 항목" in output
+    assert "- pytest 실행" in output
+    assert "- CLI 실행" in output
+
+
+def test_pr_output_replaces_english_title_with_korean_change() -> None:
+    output = format_pr_output(
+        {
+            "title": "add output validation",
+            "why": ["안정적인 출력 필요"],
+            "what": ["생성 결과 검증 추가"],
+            "how_to_test": ["pytest 실행"],
+        },
+        {"pull_request": {}},
+    )
+
+    assert output.splitlines()[1] == "생성 결과 검증 추가"
+
+
+def test_pr_output_revalidates_korean_after_truncation() -> None:
+    output = format_pr_output(
+        {
+            "title": f"{'english ' * 20}한글",
+            "why": ["technical reason"],
+            "what": ["technical change"],
+            "how_to_test": ["한국어 테스트"],
+        },
+        {"pull_request": {"title_max_length": 30}},
+    )
+
+    assert output.splitlines()[1] == "한국어 테스트"
+
+
+def test_pr_output_rejects_missing_required_items() -> None:
+    with pytest.raises(OutputFormatError, match="why"):
+        format_pr_output(
+            {
+                "title": "PR 제목",
+                "why": [],
+                "what": ["변경 내용"],
+                "how_to_test": ["pytest 실행"],
+            },
+            {"pull_request": {}},
+        )
 
 
 class _StubClient:
@@ -422,19 +564,31 @@ def test_cli_calls_api_once_and_prints_result(
         changed_files=("sample.py",),
     )
     monkeypatch.setattr(cli_module, "collect_git_context", lambda: context)
-    monkeypatch.setattr(
-        cli_module,
-        "load_convention",
-        lambda _: {
+    loaded_paths: list[str] = []
+
+    def fake_load_convention(path: str) -> dict[str, Any]:
+        loaded_paths.append(path)
+        return {
             "commit": {},
             "pull_request": {},
             "safe_mode": {"max_files": 10, "max_lines": 200},
-        },
-    )
+        }
+
+    monkeypatch.setattr(cli_module, "load_convention", fake_load_convention)
     monkeypatch.setattr(cli_module, "GroqAIClient", _StubClient)
     monkeypatch.setenv("AI_API_KEY", "test-key")
 
-    exit_code = main([command, "--temperature", "0.4", "--max-tokens", "321"])
+    exit_code = main(
+        [
+            command,
+            "--temperature",
+            "0.4",
+            "--max-tokens",
+            "321",
+            "--convention",
+            "custom.yml",
+        ]
+    )
     output = capsys.readouterr().out
 
     assert exit_code == 0
@@ -444,6 +598,7 @@ def test_cli_calls_api_once_and_prints_result(
     assert _StubClient.last_instance.request_count == 1
     assert _StubClient.last_instance.kwargs["temperature"] == 0.4
     assert _StubClient.last_instance.kwargs["max_tokens"] == 321
+    assert loaded_paths == ["custom.yml"]
 
 
 def test_cli_reports_missing_api_key(
