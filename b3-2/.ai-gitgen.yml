@@ -1,0 +1,25 @@
+commit:
+  title_max_length: 72
+  prefixes:
+    - feat
+    - fix
+    - docs
+    - refactor
+    - test
+    - chore
+
+pull_request:
+  title_max_length: 80
+  sections:
+    - Why
+    - What
+    - How to Test
+
+safe_mode:
+  max_files: 10
+  max_lines: 200
+  mask_email: true
+  exclude_files:
+    - ".env"
+    - "*.pem"
+    - "*.key"
