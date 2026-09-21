@@ -4,11 +4,16 @@ AWS EC2에서 Docker 기반 웹 서비스를 운영하는 배포 프로젝트입
 
 VPC와 퍼블릭 서브넷을 구성하고, 호스트 Nginx를 리버스 프록시로 사용해 Docker 컨테이너로 요청을 전달합니다. 외부 통신에는 HTTPS를 적용하고 `/health` 엔드포인트로 서비스 상태를 확인합니다.
 
-## Service URL
+> 평가가 끝나 AWS 리소스와 도메인을 모두 삭제했습니다. 아래 주소는 운영 당시 기록이며 현재는 접속되지 않습니다. 정리 내역은 [Cleanup Evidence](docs/cleanup-evidence.md) 에 있습니다.
 
-- Web: https://b0e2-b3.ddns.net
-- Healthcheck: https://b0e2-b3.ddns.net/health
-- Repository: https://github.com/b0e2/b3-1
+## Service URL (운영 종료)
+
+| 항목 | 주소 |
+|---|---|
+| Web | `https://b0e2-b3.ddns.net` |
+| Healthcheck | `https://b0e2-b3.ddns.net/health` |
+
+동일한 구성은 `scripts/create-infra.sh` 와 `scripts/provision.sh` 로 재현할 수 있습니다.
 
 ## Architecture
 
