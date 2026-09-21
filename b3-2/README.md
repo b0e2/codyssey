@@ -1,4 +1,4 @@
-# AI GitGen
+# Git 커밋/PR 초안 생성기
 
 Git 변경 사항을 기반으로 커밋 메시지와 Pull Request 초안을 생성하는 Python CLI 도구입니다.
 
@@ -60,5 +60,3 @@ ai-gitgen commit \
 - commit 기본 최대 토큰: `800`
 - PR 기본 최대 토큰: `1500`
 - safe mode: 기본 활성화
-
-현재 단계에서는 프로젝트 구조와 CLI 기본 옵션을 제공합니다. Git 변경 사항 수집과 GroqCloud API 호출은 다음 단계에서 구현합니다.
