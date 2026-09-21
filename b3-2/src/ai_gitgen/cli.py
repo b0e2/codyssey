@@ -1,8 +1,14 @@
 import argparse
 from collections.abc import Sequence
+from typing import Any
 
 from ai_gitgen.ai_client import DEFAULT_MODEL
-from ai_gitgen.generator import ConfigurationError, load_convention
+from ai_gitgen.generator import (
+    ConfigurationError,
+    load_convention,
+    sanitize_diff,
+)
+from ai_gitgen.git import GitError, collect_git_context
 
 DEFAULT_TEMPERATURE = 0.2
 COMMIT_DEFAULT_MAX_TOKENS = 800
@@ -76,19 +82,69 @@ def validate_arguments(
         parser.error("--max-tokens는 1 이상의 정수여야 합니다.")
 
 
-def main(argv: Sequence[str] | None = None) -> None:
+def _safe_mode_options(config: dict[str, Any]) -> dict[str, Any]:
+    safe_mode = config.get("safe_mode", {})
+    if not isinstance(safe_mode, dict):
+        raise ConfigurationError("safe_mode 설정은 객체여야 합니다.")
+
+    exclude_files = safe_mode.get("exclude_files", [])
+    if not isinstance(exclude_files, list) or not all(
+        isinstance(item, str) for item in exclude_files
+    ):
+        raise ConfigurationError("safe_mode.exclude_files는 문자열 목록이어야 합니다.")
+
+    return {
+        "max_files": int(safe_mode.get("max_files", 10)),
+        "max_lines": int(safe_mode.get("max_lines", 200)),
+        "mask_email": bool(safe_mode.get("mask_email", True)),
+        "exclude_files": exclude_files,
+    }
+
+
+def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     validate_arguments(parser, args)
 
     try:
-        load_convention(args.convention)
-    except ConfigurationError as error:
-        parser.error(str(error))
+        context = collect_git_context()
+    except GitError as error:
+        print(f"[ERROR] {error}")
+        return 1
+
+    print(f"[INFO] 현재 브랜치: {context.branch}")
+    print(
+        f"[INFO] Git status 수집 완료: "
+        f"{context.changed_file_count}개 파일 변경 감지"
+    )
+
+    if not context.has_changes:
+        print("[INFO] 변경 사항이 없습니다. 생성을 종료합니다.")
+        return 0
+
+    print(f"[INFO] Git diff 수집 완료: {context.diff_line_count}줄")
+
+    try:
+        config = load_convention(args.convention)
+        if args.safe_mode:
+            safe_diff = sanitize_diff(
+                context.diff,
+                **_safe_mode_options(config),
+            )
+            print(
+                f"[INFO] safe mode 적용 완료: "
+                f"{safe_diff.included_file_count}개 파일, "
+                f"{safe_diff.line_count}줄, "
+                f"{safe_diff.masked_value_count}건 마스킹"
+            )
+        else:
+            print("[WARN] safe mode가 비활성화되었습니다.")
+    except (ConfigurationError, TypeError, ValueError) as error:
+        print(f"[ERROR] {error}")
+        return 1
 
     print(f"[INFO] 명령: {args.command}")
     print(f"[INFO] 모델: {args.model}")
     print(f"[INFO] temperature: {args.temperature}")
     print(f"[INFO] max_tokens: {args.max_tokens}")
-    print(f"[INFO] safe_mode: {args.safe_mode}")
-    print(f"[INFO] convention: {args.convention}")
+    return 0
