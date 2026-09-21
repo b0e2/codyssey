@@ -1,0 +1,17 @@
+# AWS EC2 key pairs
+*.pem
+*.key
+
+# Environment variables
+.env
+.env.*
+
+# OS files
+.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+
+# Logs
+*.log
