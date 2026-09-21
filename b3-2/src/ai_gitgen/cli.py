@@ -1,11 +1,21 @@
 import argparse
 from collections.abc import Sequence
+import os
 from typing import Any
 
-from ai_gitgen.ai_client import DEFAULT_MODEL
+from ai_gitgen.ai_client import (
+    AIClientError,
+    DEFAULT_MODEL,
+    GroqAIClient,
+    MissingAPIKeyError,
+)
 from ai_gitgen.generator import (
     ConfigurationError,
+    OutputFormatError,
+    build_messages,
+    format_generated_output,
     load_convention,
+    response_schema_for,
     sanitize_diff,
 )
 from ai_gitgen.git import GitError, collect_git_context
@@ -126,11 +136,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         config = load_convention(args.convention)
+        diff_for_prompt = context.diff
+
         if args.safe_mode:
             safe_diff = sanitize_diff(
                 context.diff,
                 **_safe_mode_options(config),
             )
+            diff_for_prompt = safe_diff.text
             print(
                 f"[INFO] safe mode 적용 완료: "
                 f"{safe_diff.included_file_count}개 파일, "
@@ -139,12 +152,45 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         else:
             print("[WARN] safe mode가 비활성화되었습니다.")
+
+        messages = build_messages(
+            command=args.command,
+            branch=context.branch,
+            status=context.status,
+            diff=diff_for_prompt,
+            config=config,
+        )
+        schema_name, schema = response_schema_for(args.command)
     except (ConfigurationError, TypeError, ValueError) as error:
         print(f"[ERROR] {error}")
         return 1
 
-    print(f"[INFO] 명령: {args.command}")
-    print(f"[INFO] 모델: {args.model}")
-    print(f"[INFO] temperature: {args.temperature}")
-    print(f"[INFO] max_tokens: {args.max_tokens}")
+    try:
+        client = GroqAIClient(os.getenv("AI_API_KEY", ""))
+    except MissingAPIKeyError as error:
+        print(f"[ERROR] {error}")
+        print('예) export AI_API_KEY="YOUR_KEY"')
+        return 1
+
+    print("[INFO] AI API 요청 중... (1/1)")
+
+    try:
+        result = client.generate(
+            messages=messages,
+            schema_name=schema_name,
+            schema=schema,
+            model=args.model,
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+        )
+        output = format_generated_output(args.command, result)
+    except (AIClientError, OutputFormatError) as error:
+        print(f"[ERROR] {error}")
+        print(f"[INFO] API 호출 횟수: {client.request_count}")
+        return 1
+
+    print(f"[INFO] API 호출 횟수: {client.request_count}")
+    print(f"[DONE] {args.command} 초안 생성 완료")
+    print()
+    print(output)
     return 0
