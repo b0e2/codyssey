@@ -153,6 +153,66 @@ git-gen pr --convention team-convention.yml
 
 생성 결과가 설정을 어기면 로컬 후처리와 검증을 적용합니다. 제목은 설정 길이로 자르고, 허용되지 않은 커밋 prefix와 비어 있는 PR 섹션은 오류로 처리합니다. 이 과정에서 API를 추가 호출하지 않습니다.
 
+### 설정을 바꿀 때의 출력 차이
+
+같은 변경에 서로 다른 설정 파일을 적용한 결과입니다. 대상은 `b0e2/imac-init` 저장소의 Finder 설정 단계 추가 변경입니다.
+
+기본 `.git-gen.yml`(PR 섹션 `Why`, `What`, `How to Test`):
+
+```text
+--- PR Title ---
+Finder 기본 설정 추가: 숨김 파일·확장자 표시 및 목록 보기 설정
+
+--- PR Body ---
+## Why
+- Finder 설정을 스크립트에 포함시켜 초기 세팅을 완전하게 함
+
+## What
+- README에 Finder 설정 항목 추가 및 setup.sh에 Finder 설정 단계 추가
+
+## How to Test
+- setup.sh 실행 후 Finder에서 숨김 파일·확장자 표시 여부, 경로·상태 막대 표시, 목록 보기 설정을 확인
+```
+
+대상 저장소 스타일에 맞춘 설정(`init` prefix 허용, 커밋 제목 60자, PR 섹션 `배경`, `변경 사항`, `검증 방법`):
+
+```yaml
+commit:
+  title_max_length: 60
+  prefixes:
+    - init
+    - feat
+    - fix
+    - docs
+    - refactor
+    - chore
+
+pull_request:
+  title_max_length: 70
+  sections:
+    - 배경
+    - 변경 사항
+    - 검증 방법
+```
+
+```text
+--- PR Title ---
+Finder 기본 설정 추가 및 README 업데이트
+
+--- PR Body ---
+## 배경
+- Finder 기본 설정을 스크립트에 포함시켜 개발 환경 초기화 시 일관성 확보 및 사용 편의성 향상
+
+## 변경 사항
+- README에 Finder 설정 항목을 추가했습니다
+- setup.sh에 Finder 설정 단계(step_setup_finder)를 추가하고 STEP_NAMES 및 STEP_FUNCS 배열에 반영했습니다
+
+## 검증 방법
+- setup.sh를 실행한 뒤 Finder에서 숨김 파일·전체 확장자 표시, 경로·상태 막대 표시, 목록 보기가 적용되었는지 확인합니다
+```
+
+섹션 이름, 제목 길이, 허용 prefix는 설정 파일에서 결정되므로 코드 수정 없이 저장소별 규칙을 적용할 수 있습니다.
+
 ## safe mode
 
 safe mode는 기본으로 활성화되며 API 요청 전에 다음 처리를 수행합니다.
@@ -169,6 +229,40 @@ git-gen commit --safe-mode
 ```
 
 `--no-safe-mode`는 원본 diff를 그대로 전송할 수 있으므로 민감정보가 없음을 직접 확인한 경우에만 사용합니다.
+
+### 적용 전후 비교
+
+민감값이 들어간 변경을 두 설정으로 실행한 결과입니다.
+
+수집된 원본 diff:
+
+```diff
++API_KEY = "sk-live-abcdefghijklmnopqrstuvwxyz01"
++CONTACT_EMAIL = "someone@example.com"
++DB_PASSWORD = "super-secret-value"
+```
+
+`--safe-mode`로 전송되는 diff:
+
+```diff
++API_KEY = "[MASKED_SECRET]"
++CONTACT_EMAIL = "[MASKED_EMAIL]"
++DB_PASSWORD = "[MASKED_SECRET]"
+```
+
+실행 로그도 달라집니다.
+
+```text
+$ git-gen commit --safe-mode
+[INFO] Git diff 수집 완료: 9줄
+[INFO] safe mode 적용 완료: 1개 파일, 9줄, 3건 마스킹
+
+$ git-gen commit --no-safe-mode
+[INFO] Git diff 수집 완료: 9줄
+[WARN] safe mode가 비활성화되었습니다.
+```
+
+두 경우 모두 생성된 커밋 메시지는 같은 내용이었고, 차이는 전송되는 diff에만 있었습니다. 마스킹 대상은 값 부분이므로 변수명과 구조는 그대로 남습니다.
 
 ## 입출력 예시
 
@@ -230,6 +324,22 @@ $ git-gen pr
 ```
 
 생성 결과는 초안입니다. 내용을 검토한 뒤 `git commit` 또는 GitHub PR 작성에 사용합니다.
+
+## 다른 저장소에 적용한 사례
+
+`b0e2/imac-init` 저장소에 Finder 기본값 설정 단계를 추가하면서 이 도구로 커밋 메시지 1회와 PR 초안 1회를 생성했습니다.
+
+- PR: https://github.com/b0e2/imac-init/pull/1
+- 사용한 명령: `git-gen commit --convention imac-init.yml`, `git-gen pr --convention imac-init.yml`
+
+초안과 최종 PR의 차이는 다음과 같습니다.
+
+- 커밋 제목은 초안의 `feat: Finder 설정 추가`를 그대로 사용했습니다.
+- PR 제목은 커밋 제목과 형식을 맞추기 위해 `feat:` prefix를 붙였습니다.
+- 배경은 초안의 일반적인 표현 대신 반복 작업을 줄이려는 실제 이유로 바꿨습니다.
+- 변경 사항은 파일별로 나누고 추가한 설정 항목을 명시했습니다.
+- 검증 방법은 초안의 수동 확인 항목에 실제로 실행한 `bash -n setup.sh`, `--list`, `--dry-run --only finder`를 추가했습니다.
+- 초안의 문장형 서술은 저장소 문서 톤에 맞춰 간단한 명사형으로 정리했습니다.
 
 ## 처리 흐름
 
