@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ai-gitgen"
+name = "git-gen"
 version = "0.1.0"
 description = "Git 변경 사항을 기반으로 커밋 메시지와 PR 초안을 생성하는 CLI 도구"
 readme = "README.md"
@@ -19,7 +19,7 @@ dev = [
 ]
 
 [project.scripts]
-ai-gitgen = "ai_gitgen.cli:main"
+git-gen = "git_gen.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
