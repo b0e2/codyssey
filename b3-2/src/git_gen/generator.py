@@ -1,5 +1,7 @@
 """Prompt generation, safe mode, and output validation."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from fnmatch import fnmatch
 import json
