@@ -14,7 +14,7 @@ Git 저장소의 브랜치, 상태, staged/unstaged diff를 수집해 한국어 
 
 ## 요구 환경
 
-- Python 3.10 이상
+- Python 3.9 이상
 - Git
 - LLM API Key와 Chat Completions endpoint
 
@@ -255,6 +255,8 @@ $ git-gen pr
 
 | 메시지 또는 상황 | 원인 | 해결 방법 |
 | --- | --- | --- |
+| `requires a different Python` | Python 3.8 이하 사용 | Python 3.9 이상으로 가상환경을 다시 생성 |
+| `No module named git_gen` | 현재 Python 환경에 패키지가 설치되지 않음 | 가상환경을 활성화하고 `python -m pip install -e ".[dev]"` 실행 |
 | `현재 위치는 Git 저장소가 아닙니다` | Git 저장소 밖에서 실행 | 저장소로 이동한 뒤 실행 |
 | `프로젝트 루트에서 실행해 주세요` | 하위 디렉터리에서 실행 | 안내된 저장소 루트로 이동 |
 | `LLM_API_KEY 환경변수가 설정되지 않았습니다` | Key 미설정 | `.env`를 작성하고 현재 셸에 로드 |
