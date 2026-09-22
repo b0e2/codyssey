@@ -3,13 +3,14 @@ from collections.abc import Sequence
 import os
 from typing import Any
 
-from ai_gitgen.ai_client import (
-    AIClientError,
+from git_gen.llm_client import (
+    LLMClientError,
     DEFAULT_MODEL,
-    GroqAIClient,
+    LLMClient,
+    MissingAPIEndpointError,
     MissingAPIKeyError,
 )
-from ai_gitgen.generator import (
+from git_gen.generator import (
     ConfigurationError,
     OutputFormatError,
     build_messages,
@@ -19,7 +20,7 @@ from ai_gitgen.generator import (
     sanitize_diff,
     validate_output_config,
 )
-from ai_gitgen.git import GitError, collect_git_context
+from git_gen.git import GitError, collect_git_context
 
 DEFAULT_TEMPERATURE = 0.2
 COMMIT_DEFAULT_MAX_TOKENS = 800
@@ -33,7 +34,7 @@ def add_generation_options(
     parser.add_argument(
         "--model",
         default=DEFAULT_MODEL,
-        help=f"사용할 Groq 모델, 기본값: {DEFAULT_MODEL}",
+        help=f"사용할 LLM 모델, 기본값: {DEFAULT_MODEL}",
     )
     parser.add_argument(
         "--temperature",
@@ -55,14 +56,14 @@ def add_generation_options(
     )
     parser.add_argument(
         "--convention",
-        default=".ai-gitgen.yml",
+        default=".git-gen.yml",
         help="컨벤션 설정 파일 경로",
     )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="ai-gitgen",
+        prog="git-gen",
         description="Git 변경 사항을 기반으로 커밋 메시지와 PR 초안을 생성합니다.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -168,13 +169,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     try:
-        client = GroqAIClient(os.getenv("AI_API_KEY", ""))
-    except MissingAPIKeyError as error:
+        client = LLMClient(
+            api_key=os.getenv("LLM_API_KEY", ""),
+            endpoint=os.getenv("LLM_API_ENDPOINT", ""),
+        )
+    except (MissingAPIKeyError, MissingAPIEndpointError) as error:
         print(f"[ERROR] {error}")
-        print('예) export AI_API_KEY="YOUR_KEY"')
+        print('예) export LLM_API_KEY="YOUR_KEY"')
+        print('예) export LLM_API_ENDPOINT="https://example.com/v1/chat/completions"')
         return 1
 
-    print("[INFO] AI API 요청 중... (1/1)")
+    print("[INFO] LLM API 요청 중... (1/1)")
 
     try:
         result = client.generate(
@@ -186,7 +191,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_tokens=args.max_tokens,
         )
         output = format_generated_output(args.command, result, config)
-    except (AIClientError, ConfigurationError, OutputFormatError) as error:
+    except (LLMClientError, ConfigurationError, OutputFormatError) as error:
         print(f"[ERROR] {error}")
         print(f"[INFO] API 호출 횟수: {client.request_count}")
         return 1

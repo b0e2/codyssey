@@ -1,4 +1,4 @@
-from ai_gitgen.cli import main
+from git_gen.cli import main
 
 
 if __name__ == "__main__":

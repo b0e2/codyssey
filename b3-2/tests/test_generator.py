@@ -6,18 +6,18 @@ from typing import Any
 import pytest
 import requests
 
-import ai_gitgen.cli as cli_module
-from ai_gitgen.ai_client import (
+import git_gen.cli as cli_module
+from git_gen.llm_client import (
     APIRequestError,
     AuthenticationError,
-    GROQ_API_ENDPOINT,
-    GroqAIClient,
+    LLMClient,
     InvalidResponseError,
+    MissingAPIEndpointError,
     NetworkError,
     RateLimitError,
 )
-from ai_gitgen.cli import main
-from ai_gitgen.generator import (
+from git_gen.cli import main
+from git_gen.generator import (
     ConfigurationError,
     OutputFormatError,
     build_messages,
@@ -28,7 +28,7 @@ from ai_gitgen.generator import (
     sanitize_diff,
     validate_output_config,
 )
-from ai_gitgen.git import (
+from git_gen.git import (
     GitContext,
     NotGitRepositoryError,
     NotRepositoryRootError,
@@ -84,9 +84,11 @@ def test_load_convention_rejects_non_mapping(tmp_path: Path) -> None:
 
 def test_sanitize_diff_masks_sensitive_values() -> None:
     api_key = "gsk_" + "a" * 26
+    generic_key = "sk-proj-" + "b" * 26
     diff = _diff_block(
         "config.py",
-        f"+AI_API_KEY={api_key}\n"
+        f"+LLM_API_KEY={api_key}\n"
+        f"+value = '{generic_key}'\n"
         "+email=user@example.com\n"
         "+DB_PASSWORD=database-password\n"
         "+AWS_SECRET_ACCESS_KEY=cloud-secret",
@@ -95,16 +97,17 @@ def test_sanitize_diff_masks_sensitive_values() -> None:
     result = sanitize_diff(diff)
 
     assert api_key not in result.text
+    assert generic_key not in result.text
     assert "user@example.com" not in result.text
     assert "database-password" not in result.text
     assert "cloud-secret" not in result.text
-    assert result.masked_value_count == 4
+    assert result.masked_value_count == 5
 
 
 def test_sanitize_diff_excludes_sensitive_files() -> None:
     diff = "\n".join(
         [
-            _diff_block(".env", "+AI_API_KEY=value"),
+            _diff_block(".env", "+LLM_API_KEY=value"),
             _diff_block("src/app.py", "+print('ok')"),
         ]
     )
@@ -225,7 +228,7 @@ class _FakeSession:
         return self.response
 
 
-def test_groq_client_sends_strict_schema_request() -> None:
+def test_llm_client_sends_strict_schema_request() -> None:
     content = json.dumps(
         {"title": "feat: 변경 사항 요약", "body": []},
         ensure_ascii=False,
@@ -236,7 +239,11 @@ def test_groq_client_sends_strict_schema_request() -> None:
             {"choices": [{"message": {"content": content}}]},
         )
     )
-    client = GroqAIClient("test-key", session=session)
+    client = LLMClient(
+        "test-key",
+        "https://llm.example/v1/chat/completions",
+        session=session,
+    )
     schema_name, schema = response_schema_for("commit")
 
     result = client.generate(
@@ -251,7 +258,7 @@ def test_groq_client_sends_strict_schema_request() -> None:
     assert result["title"] == "feat: 변경 사항 요약"
     assert client.request_count == 1
     assert len(session.calls) == 1
-    assert session.calls[0]["url"] == GROQ_API_ENDPOINT
+    assert session.calls[0]["url"] == "https://llm.example/v1/chat/completions"
     assert session.calls[0]["headers"]["Authorization"] == "Bearer test-key"
     request_json = session.calls[0]["json"]
     assert request_json["max_completion_tokens"] == 800
@@ -263,12 +270,16 @@ def test_groq_client_sends_strict_schema_request() -> None:
     ("status_code", "error_type"),
     [(401, AuthenticationError), (403, AuthenticationError), (429, RateLimitError)],
 )
-def test_groq_client_classifies_http_errors(
+def test_llm_client_classifies_http_errors(
     status_code: int,
     error_type: type[Exception],
 ) -> None:
     session = _FakeSession(_FakeResponse(status_code, {"error": {}}))
-    client = GroqAIClient("test-key", session=session)
+    client = LLMClient(
+        "test-key",
+        "https://llm.example/v1/chat/completions",
+        session=session,
+    )
 
     with pytest.raises(error_type):
         client.generate(
@@ -281,11 +292,15 @@ def test_groq_client_classifies_http_errors(
         )
 
 
-def test_groq_client_reports_generic_http_error() -> None:
+def test_llm_client_reports_generic_http_error() -> None:
     session = _FakeSession(
         _FakeResponse(500, {"error": {"message": "server error"}})
     )
-    client = GroqAIClient("test-key", session=session)
+    client = LLMClient(
+        "test-key",
+        "https://llm.example/v1/chat/completions",
+        session=session,
+    )
 
     with pytest.raises(APIRequestError, match="HTTP 500.*server error"):
         client.generate(
@@ -298,9 +313,13 @@ def test_groq_client_reports_generic_http_error() -> None:
         )
 
 
-def test_groq_client_classifies_network_error() -> None:
+def test_llm_client_classifies_network_error() -> None:
     session = _FakeSession(error=requests.ConnectionError("offline"))
-    client = GroqAIClient("test-key", session=session)
+    client = LLMClient(
+        "test-key",
+        "https://llm.example/v1/chat/completions",
+        session=session,
+    )
 
     with pytest.raises(NetworkError):
         client.generate(
@@ -313,14 +332,18 @@ def test_groq_client_classifies_network_error() -> None:
         )
 
 
-def test_groq_client_rejects_invalid_json() -> None:
+def test_llm_client_rejects_invalid_json() -> None:
     session = _FakeSession(
         _FakeResponse(
             200,
             {"choices": [{"message": {"content": "not-json"}}]},
         )
     )
-    client = GroqAIClient("test-key", session=session)
+    client = LLMClient(
+        "test-key",
+        "https://llm.example/v1/chat/completions",
+        session=session,
+    )
 
     with pytest.raises(InvalidResponseError):
         client.generate(
@@ -340,9 +363,13 @@ def test_groq_client_rejects_invalid_json() -> None:
         {"choices": [{"message": {"content": "[]"}}]},
     ],
 )
-def test_groq_client_rejects_invalid_response_shape(payload: dict[str, Any]) -> None:
+def test_llm_client_rejects_invalid_response_shape(payload: dict[str, Any]) -> None:
     session = _FakeSession(_FakeResponse(200, payload))
-    client = GroqAIClient("test-key", session=session)
+    client = LLMClient(
+        "test-key",
+        "https://llm.example/v1/chat/completions",
+        session=session,
+    )
 
     with pytest.raises(InvalidResponseError):
         client.generate(
@@ -526,8 +553,9 @@ def test_pr_output_rejects_missing_required_items() -> None:
 class _StubClient:
     last_instance: "_StubClient | None" = None
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, endpoint: str) -> None:
         assert api_key == "test-key"
+        assert endpoint == "https://llm.example/v1/chat/completions"
         self.request_count = 0
         self.kwargs: dict[str, Any] = {}
         _StubClient.last_instance = self
@@ -575,8 +603,12 @@ def test_cli_calls_api_once_and_prints_result(
         }
 
     monkeypatch.setattr(cli_module, "load_convention", fake_load_convention)
-    monkeypatch.setattr(cli_module, "GroqAIClient", _StubClient)
-    monkeypatch.setenv("AI_API_KEY", "test-key")
+    monkeypatch.setattr(cli_module, "LLMClient", _StubClient)
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    monkeypatch.setenv(
+        "LLM_API_ENDPOINT",
+        "https://llm.example/v1/chat/completions",
+    )
 
     exit_code = main(
         [
@@ -622,10 +654,19 @@ def test_cli_reports_missing_api_key(
             "safe_mode": {"max_files": 10, "max_lines": 200},
         },
     )
-    monkeypatch.delenv("AI_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.setenv(
+        "LLM_API_ENDPOINT",
+        "https://llm.example/v1/chat/completions",
+    )
 
     exit_code = main(["commit"])
     output = capsys.readouterr().out
 
     assert exit_code == 1
-    assert "AI_API_KEY 환경변수가 설정되지 않았습니다" in output
+    assert "LLM_API_KEY 환경변수가 설정되지 않았습니다" in output
+
+
+def test_llm_client_reports_missing_endpoint() -> None:
+    with pytest.raises(MissingAPIEndpointError, match="LLM_API_ENDPOINT"):
+        LLMClient("test-key", "")

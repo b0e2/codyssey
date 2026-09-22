@@ -1,56 +1,62 @@
-"""AI API client definitions."""
+"""LLM API client definitions."""
 
 import json
 from typing import Any
 
 import requests
 
-GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "openai/gpt-oss-20b"
-QUALITY_MODEL = "openai/gpt-oss-120b"
 
 
-class AIClientError(Exception):
-    """Base exception for AI client failures."""
+class LLMClientError(Exception):
+    """Base exception for LLM client failures."""
 
 
-class MissingAPIKeyError(AIClientError):
+class MissingAPIKeyError(LLMClientError):
     """Raised when the API key is missing."""
 
 
-class AuthenticationError(AIClientError):
+class MissingAPIEndpointError(LLMClientError):
+    """Raised when the API endpoint is missing."""
+
+
+class AuthenticationError(LLMClientError):
     """Raised when API authentication fails."""
 
 
-class RateLimitError(AIClientError):
+class RateLimitError(LLMClientError):
     """Raised when the API rate limit is exceeded."""
 
 
-class NetworkError(AIClientError):
+class NetworkError(LLMClientError):
     """Raised when a network request fails."""
 
 
-class InvalidResponseError(AIClientError):
+class InvalidResponseError(LLMClientError):
     """Raised when the API response cannot be parsed."""
 
 
-class APIRequestError(AIClientError):
+class APIRequestError(LLMClientError):
     """Raised for other API request failures."""
 
 
-class GroqAIClient:
-    """GroqCloud Chat Completions API client."""
+class LLMClient:
+    """LLM Chat Completions API client."""
 
     def __init__(
         self,
         api_key: str,
-        endpoint: str = GROQ_API_ENDPOINT,
+        endpoint: str,
         timeout: float = 30.0,
         session: requests.Session | None = None,
     ) -> None:
         if not api_key.strip():
             raise MissingAPIKeyError(
-                "AI_API_KEY 환경변수가 설정되지 않았습니다."
+                "LLM_API_KEY 환경변수가 설정되지 않았습니다."
+            )
+        if not endpoint.strip():
+            raise MissingAPIEndpointError(
+                "LLM_API_ENDPOINT 환경변수가 설정되지 않았습니다."
             )
 
         self._api_key = api_key
@@ -100,23 +106,23 @@ class GroqAIClient:
             )
         except requests.RequestException as error:
             raise NetworkError(
-                f"Groq API 네트워크 오류: {error}"
+                f"LLM API 네트워크 오류: {error}"
             ) from error
 
         if response.status_code in {401, 403}:
             raise AuthenticationError(
-                "Groq API 인증에 실패했습니다. AI_API_KEY를 확인해 주세요."
+                "LLM API 인증에 실패했습니다. LLM_API_KEY를 확인해 주세요."
             )
 
         if response.status_code == 429:
             raise RateLimitError(
-                "Groq API 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요."
+                "LLM API 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요."
             )
 
         if response.status_code >= 400:
             message = self._extract_error_message(response)
             raise APIRequestError(
-                f"Groq API 요청 실패 (HTTP {response.status_code}): {message}"
+                f"LLM API 요청 실패 (HTTP {response.status_code}): {message}"
             )
 
         try:
@@ -125,12 +131,12 @@ class GroqAIClient:
             result = json.loads(content) if isinstance(content, str) else content
         except (ValueError, KeyError, IndexError, TypeError) as error:
             raise InvalidResponseError(
-                "Groq API 응답 JSON 형식이 올바르지 않습니다."
+                "LLM API 응답 JSON 형식이 올바르지 않습니다."
             ) from error
 
         if not isinstance(result, dict):
             raise InvalidResponseError(
-                "Groq API 응답 JSON 형식이 올바르지 않습니다."
+                "LLM API 응답 JSON 형식이 올바르지 않습니다."
             )
 
         return result

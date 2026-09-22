@@ -69,7 +69,10 @@ class SafeDiffResult:
     truncated: bool
 
 
-_GROQ_KEY_PATTERN = re.compile(r"\bgsk_[A-Za-z0-9_-]+\b")
+_KNOWN_API_KEY_PATTERN = re.compile(
+    r"\b(?:gsk_|sk-(?:proj-|ant-)?)"
+    r"[A-Za-z0-9_-]{20,}\b"
+)
 _BEARER_PATTERN = re.compile(
     r"(?i)(authorization\s*:\s*bearer\s+)[^\s\"']+"
 )
@@ -153,7 +156,7 @@ def _mask_sensitive_values(text: str, mask_email: bool) -> tuple[str, int]:
     text, count = _SECRET_PATTERN.subn(replace_secret, text)
     masked_count += count
 
-    text, count = _GROQ_KEY_PATTERN.subn("[MASKED_API_KEY]", text)
+    text, count = _KNOWN_API_KEY_PATTERN.subn("[MASKED_API_KEY]", text)
     masked_count += count
 
     text, count = _BEARER_PATTERN.subn(
