@@ -1,8 +1,42 @@
-# git-gen
+# GitGen
 
-Git 저장소의 브랜치, 상태, staged/unstaged diff를 수집해 한국어 커밋 메시지와 Pull Request 초안을 만드는 Python CLI 도구입니다. Chat Completions 호환 LLM API를 사용하며, 한 번 실행할 때 API를 한 번만 호출합니다.
+<p align="center">
+  <b>Git 변경 사항으로 한국어 커밋 메시지와 Pull Request 초안을 만드는 CLI</b><br/>
+  저장소 컨벤션, safe mode, 출력 검증을 적용하는 Python 기반 LLM 도구
+</p>
 
-## 주요 기능
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.9+" />
+  <img src="https://img.shields.io/badge/interface-CLI-222222?style=flat-square" alt="CLI" />
+  <img src="https://img.shields.io/badge/LLM-Chat%20Completions-7C3AED?style=flat-square" alt="Chat Completions" />
+  <img src="https://img.shields.io/badge/testing-pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white" alt="pytest" />
+</p>
+
+---
+
+## Overview
+
+GitGen은 현재 Git 저장소의 브랜치, 상태와 staged/unstaged diff를 수집해 한국어 커밋 메시지와 Pull Request 초안을 만드는 Python CLI 도구입니다.
+
+Chat Completions 호환 LLM API를 사용하며, 한 번 실행할 때 API를 한 번만 호출합니다. 모델 응답은 저장소 컨벤션과 로컬 검증을 통과한 뒤 초안으로 출력됩니다.
+
+## Problem
+
+- 변경 범위가 커지면 핵심을 반영한 커밋 메시지를 일관되게 작성하기 어려움
+- 저장소마다 허용하는 prefix, 제목 길이와 PR 섹션이 다름
+- diff에 API Key, 이메일과 같은 민감정보가 포함될 수 있음
+- 모델 응답이 지정한 형식이나 언어를 따르지 않을 수 있음
+- 초안 생성 과정에서 불필요한 API 재호출을 피해야 함
+
+## Solution
+
+- Git 상태와 diff를 하나의 컨텍스트로 수집
+- YAML 설정으로 커밋과 PR 컨벤션 분리
+- safe mode에서 파일 제외, 민감값 마스킹과 크기 제한 적용
+- strict JSON Schema와 로컬 후처리로 출력 형식 검증
+- 명령 한 번당 LLM API 요청을 한 번으로 제한
+
+## Core Features
 
 - `commit`: Conventional Commit prefix가 포함된 커밋 메시지 생성
 - `pr`: `Why`, `What`, `How to Test` 섹션이 있는 PR 초안 생성
@@ -21,8 +55,8 @@ Git 저장소의 브랜치, 상태, staged/unstaged diff를 수집해 한국어 
 ## 설치
 
 ```bash
-git clone https://github.com/b0e2/b3-2.git
-cd b3-2
+git clone https://github.com/b0e2/codyssey.git
+cd codyssey/b3-2
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
