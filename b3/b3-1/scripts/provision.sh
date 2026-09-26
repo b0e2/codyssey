@@ -11,7 +11,7 @@
 #
 set -euxo pipefail
 
-REPO_URL="https://github.com/b0e2/b3-1.git"
+REPO_URL="https://github.com/b0e2/codyssey.git"
 APP_DIR="/opt/b3-1"
 IMAGE_TAG="b3-1-web:1.4"
 CONTAINER_NAME="b3-1-web"
@@ -27,7 +27,7 @@ usermod -aG docker ubuntu || true
 
 rm -rf "${APP_DIR}"
 git clone "${REPO_URL}" "${APP_DIR}"
-cd "${APP_DIR}"
+cd "${APP_DIR}/b3/b3-1"
 
 docker build -t "${IMAGE_TAG}" .
 

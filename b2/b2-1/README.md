@@ -281,7 +281,7 @@ CLI 결과 또는 오류 안내
 
 ```bash
 git clone https://github.com/b0e2/codyssey.git
-cd codyssey/b2-1
+cd codyssey/b2/b2-1
 
 python3 -m budget_app --help
 python3 -m budget_app add

@@ -175,7 +175,7 @@ Docker Desktop 또는 OrbStack처럼 Docker 데몬을 제공하는 환경이 필
 
 ```bash
 git clone https://github.com/b0e2/codyssey.git
-cd codyssey/e1-1/app
+cd codyssey/e1/e1-1/app
 
 docker compose up -d --build
 ```

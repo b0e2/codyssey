@@ -247,7 +247,7 @@ N×N 행렬은 모든 셀을 한 번씩 확인하므로 시간 복잡도는 `O(N
 
 ```bash
 git clone https://github.com/b0e2/codyssey.git
-cd codyssey/e1-3
+cd codyssey/e1/e1-3
 
 python3 main.py
 ```

@@ -56,7 +56,7 @@ Chat Completions 호환 LLM API를 사용하며, 한 번 실행할 때 API를 �
 
 ```bash
 git clone https://github.com/b0e2/codyssey.git
-cd codyssey/b3-2
+cd codyssey/b3/b3-2
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"

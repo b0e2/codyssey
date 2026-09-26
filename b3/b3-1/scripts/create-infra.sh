@@ -16,7 +16,7 @@ INSTANCE_TYPE="${INSTANCE_TYPE:-t3.micro}"
 VPC_CIDR="${VPC_CIDR:-10.0.0.0/16}"
 SUBNET_CIDR="${SUBNET_CIDR:-10.0.1.0/24}"
 SSH_CIDR="${SSH_CIDR:?SSH_CIDR 환경 변수가 필요합니다. 예: 203.0.113.10/32}"
-PROVISION_URL="${PROVISION_URL:-https://raw.githubusercontent.com/b0e2/b3-1/main/scripts/provision.sh}"
+PROVISION_URL="${PROVISION_URL:-https://raw.githubusercontent.com/b0e2/codyssey/main/b3/b3-1/scripts/provision.sh}"
 
 COMMON_TAGS="{Key=Project,Value=${PROJECT}},{Key=Env,Value=lab},{Key=Owner,Value=jeongbeen},{Key=ManagedBy,Value=create-infra-script}"
 

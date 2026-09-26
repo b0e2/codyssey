@@ -219,8 +219,8 @@ Hero 글자 크기만 고정값이 아니라 `clamp` 입니다. 타이핑 자리
 ES Modules 를 쓰므로 `file://` 이 아닌 HTTP 주소로 열어야 합니다.
 
 ```bash
-git clone https://github.com/b0e2/b1-1.git
-cd b1-1
+git clone https://github.com/b0e2/codyssey.git
+cd codyssey/b1/b1-1
 
 python3 -m http.server 8000
 ```

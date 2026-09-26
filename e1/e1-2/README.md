@@ -212,7 +212,7 @@ os.replace로 state.json 교체
 
 ```bash
 git clone https://github.com/b0e2/codyssey.git
-cd codyssey/e1-2
+cd codyssey/e1/e1-2
 
 python3 main.py
 ```
