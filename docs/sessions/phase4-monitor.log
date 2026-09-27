@@ -1,0 +1,169 @@
+jungbin-MacBookPro% orb -m agent-lab
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 1. 스크립트 배치 (작성자 agent-dev, 실행 그룹 agent-core)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo mkdir -p /home/agent-admin/agent-app/bin
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chown agent-dev:agent-core /home/agent-admin/agent-app/bin
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chmod 750 /home/agent-admin/agent-app/bin
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo cp /Users/jeongbin/Desktop/b4-1/scripts/monitor.sh /home/agent-admin/agent-app/bin/
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chown agent-dev:agent-core /home/agent-admin/agent-app/bin/monitor.sh
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chmod 750 /home/agent-admin/agent-app/bin/monitor.sh
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ls -l /home/agent-admin/agent-app/bin
+total 4
+-rwxr-x--- 1 agent-dev agent-core 3435 Sep 28 07:31 monitor.sh
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -u agent-test bash -c /home/agent-admin/agent-app/bin/monitor.sh; echo "exit code: $?"
+bash: line 1: /home/agent-admin/agent-app/bin/monitor.sh: Permission denied
+exit code: 126
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 2. agent-admin으로 실행
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -iu agent-admin
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/monitor.sh
+====== SYSTEM MONITOR RESULT ======
+
+[HEALTH CHECK]
+Checking process 'agent-app-linux'... [OK] (PID: 5755)
+Checking port 15034... [OK]
+Checking firewall (ufw)... [OK]
+
+[RESOURCE MONITORING]
+CPU Usage : 2.4%
+MEM Usage : 15.3%
+DISK Used : 8%
+
+[WARNING] MEM threshold exceeded (15.3% > 10%)
+
+[INFO] Log appended: /var/log/agent-app/monitor.log
+agent-admin@agent-lab:~$ echo "exit code: $?"
+exit code: 0
+agent-admin@agent-lab:~$ for i in 1 2 3; do $AGENT_HOME/bin/monitor.sh > /dev/null; done
+agent-admin@agent-lab:~$ tail -5 $AGENT_LOG_DIR/monitor.log
+[2026-09-28 07:31:10] PID:5755 CPU:2.4% MEM:15.3% DISK_USED:8%
+[2026-09-28 07:31:12] PID:5755 CPU:0.2% MEM:14.7% DISK_USED:8%
+[2026-09-28 07:31:13] PID:5755 CPU:0.2% MEM:14.1% DISK_USED:8%
+[2026-09-28 07:31:14] PID:5755 CPU:1.7% MEM:14.7% DISK_USED:8%
+agent-admin@agent-lab:~$ # 3. CPU 임계값 경고 (코어 7개라 앱만으로는 20% 미만, yes 3개로 부하)
+agent-admin@agent-lab:~$ for i in 1 2 3; do timeout 8 yes > /dev/null & done
+[1] 6400
+[2] 6401
+[3] 6402
+agent-admin@agent-lab:~$ sleep 1
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/monitor.sh
+====== SYSTEM MONITOR RESULT ======
+
+[HEALTH CHECK]
+Checking process 'agent-app-linux'... [OK] (PID: 5755)
+Checking port 15034... [OK]
+Checking firewall (ufw)... [OK]
+
+[RESOURCE MONITORING]
+CPU Usage : 37.7%
+MEM Usage : 15.1%
+DISK Used : 8%
+
+[WARNING] CPU threshold exceeded (37.7% > 20%)
+[WARNING] MEM threshold exceeded (15.1% > 10%)
+
+[INFO] Log appended: /var/log/agent-app/monitor.log
+agent-admin@agent-lab:~$ wait
+[1]   Exit 124                timeout 8 yes > /dev/null
+agent-admin@agent-lab:~$ exit
+logout
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 4. 방화벽 비활성 시: 경고만 출력하고 계속 진행
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ufw disable
+Firewall stopped and disabled on system startup
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -iu agent-admin /home/agent-admin/agent-app/bin/monitor.sh; echo "exit code: $?"
+====== SYSTEM MONITOR RESULT ======
+
+[HEALTH CHECK]
+Checking process 'agent-app-linux'... [OK] (PID: 5755)
+Checking port 15034... [OK]
+[WARNING] Firewall (ufw) is not active
+
+[RESOURCE MONITORING]
+CPU Usage : 2.4%
+MEM Usage : 16.7%
+DISK Used : 8%
+
+[WARNING] MEM threshold exceeded (16.7% > 10%)
+
+[INFO] Log appended: /var/log/agent-app/monitor.log
+exit code: 0
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ufw --force enable
+Firewall is active and enabled on system startup
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ufw status
+Status: active
+
+To                         Action      From
+--                         ------      ----
+20022/tcp                  ALLOW       Anywhere
+15034/tcp                  ALLOW       Anywhere
+20022/tcp (v6)             ALLOW       Anywhere (v6)
+15034/tcp (v6)             ALLOW       Anywhere (v6)
+
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 5. 앱 중단 시: exit 1, 원인을 로그에 기록
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo pkill -INT -x agent-app-linux
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sleep 2
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -iu agent-admin /home/agent-admin/agent-app/bin/monitor.sh; echo "exit code: $?"
+====== SYSTEM MONITOR RESULT ======
+
+[HEALTH CHECK]
+[ERROR] process 'agent-app-linux' not running
+exit code: 1
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo tail -2 /var/log/agent-app/monitor.log
+[2026-09-28 07:31:26] PID:5755 CPU:2.4% MEM:16.7% DISK_USED:8%
+[2026-09-28 07:31:31] ERROR: process 'agent-app-linux' not running
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 앱 다시 실행
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -iu agent-admin
+agent-admin@agent-lab:~$ nohup $AGENT_HOME/agent-app-linux-arm64 > /dev/null 2>&1 &
+[1] 6933
+agent-admin@agent-lab:~$ sleep 3
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/monitor.sh; echo "exit code: $?"
+====== SYSTEM MONITOR RESULT ======
+
+[HEALTH CHECK]
+Checking process 'agent-app-linux'... [OK] (PID: 6934)
+Checking port 15034... [OK]
+Checking firewall (ufw)... [OK]
+
+[RESOURCE MONITORING]
+CPU Usage : 1.7%
+MEM Usage : 15.5%
+DISK Used : 8%
+
+[WARNING] MEM threshold exceeded (15.5% > 10%)
+
+[INFO] Log appended: /var/log/agent-app/monitor.log
+exit code: 0
+agent-admin@agent-lab:~$ # 6. 로그 회전 (임시 폴더, 1바이트 기준으로 22회 실행)
+agent-admin@agent-lab:~$ mkdir -p /tmp/rotate-test
+agent-admin@agent-lab:~$ for i in $(seq 22); do AGENT_LOG_DIR=/tmp/rotate-test LOG_MAX_BYTES=1 $AGENT_HOME/bin/monitor.sh > /dev/null; done
+agent-admin@agent-lab:~$ ls -1 /tmp/rotate-test
+monitor.20260928-073153.log
+monitor.20260928-073154.log
+monitor.20260928-073155.log
+monitor.20260928-073156.log
+monitor.20260928-073157.log
+monitor.20260928-073158.log
+monitor.20260928-073159.log
+monitor.20260928-073200.log
+monitor.20260928-073201.log
+monitor.log
+agent-admin@agent-lab:~$ ls /tmp/rotate-test | wc -l
+10
+agent-admin@agent-lab:~$ rm -rf /tmp/rotate-test
+agent-admin@agent-lab:~$ exit
+logout
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 7. 최종 로그
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ls -l /var/log/agent-app
+total 48
+-rw-rw----+ 1 agent-admin agent-core 44998 Sep 28 07:31 agent_app.log
+-rw-rw----+ 1 agent-admin agent-core   509 Sep 28 07:31 monitor.log
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo tail -8 /var/log/agent-app/monitor.log
+[2026-09-28 07:31:10] PID:5755 CPU:2.4% MEM:15.3% DISK_USED:8%
+[2026-09-28 07:31:12] PID:5755 CPU:0.2% MEM:14.7% DISK_USED:8%
+[2026-09-28 07:31:13] PID:5755 CPU:0.2% MEM:14.1% DISK_USED:8%
+[2026-09-28 07:31:14] PID:5755 CPU:1.7% MEM:14.7% DISK_USED:8%
+[2026-09-28 07:31:18] PID:5755 CPU:37.7% MEM:15.1% DISK_USED:8%
+[2026-09-28 07:31:26] PID:5755 CPU:2.4% MEM:16.7% DISK_USED:8%
+[2026-09-28 07:31:31] ERROR: process 'agent-app-linux' not running
+[2026-09-28 07:31:37] PID:6934 CPU:1.7% MEM:15.5% DISK_USED:8%
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ exit
+logout
+jungbin-MacBookPro% exit
