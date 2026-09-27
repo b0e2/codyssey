@@ -1,0 +1,110 @@
+jungbin-MacBookPro% orb -m agent-lab
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 1. 그룹 생성
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo groupadd agent-common
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo groupadd agent-core
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 2. 계정 생성
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo useradd -m -s /bin/bash -G agent-common,agent-core agent-admin
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo useradd -m -s /bin/bash -G agent-common,agent-core agent-dev
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo useradd -m -s /bin/bash -G agent-common agent-test
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 3. 디렉토리 생성과 권한
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo mkdir -p /home/agent-admin/agent-app/upload_files
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo mkdir -p /home/agent-admin/agent-app/api_keys
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo mkdir -p /var/log/agent-app
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chown agent-admin:agent-common /home/agent-admin/agent-app
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chmod 750 /home/agent-admin/agent-app
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chown agent-admin:agent-common /home/agent-admin/agent-app/upload_files
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chmod 2770 /home/agent-admin/agent-app/upload_files
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chown agent-admin:agent-core /home/agent-admin/agent-app/api_keys
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chmod 2770 /home/agent-admin/agent-app/api_keys
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chown agent-admin:agent-core /var/log/agent-app
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chmod 2770 /var/log/agent-app
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 4. ACL
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo setfacl -m g:agent-common:x /home/agent-admin
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo setfacl -d -m g:agent-common:rwx /home/agent-admin/agent-app/upload_files
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo setfacl -d -m g:agent-core:rwx /home/agent-admin/agent-app/api_keys
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo setfacl -d -m g:agent-core:rwx /var/log/agent-app
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 5. 확인
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ id agent-admin
+uid=1000(agent-admin) gid=1002(agent-admin) groups=1002(agent-admin),1000(agent-common),1001(agent-core)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ id agent-dev
+uid=1001(agent-dev) gid=1003(agent-dev) groups=1003(agent-dev),1000(agent-common),1001(agent-core)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ id agent-test
+uid=1002(agent-test) gid=1004(agent-test) groups=1004(agent-test),1000(agent-common)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ getent group agent-common agent-core
+agent-common:x:1000:agent-admin,agent-dev,agent-test
+agent-core:x:1001:agent-admin,agent-dev
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ls -ld /home/agent-admin /home/agent-admin/agent-app /home/agent-admin/agent-app/upload_files /home/agent-admin/agent-app/api_keys /var/log/agent-app
+drwxr-x---+ 1 agent-admin agent-admin  72 Sep 28 07:09 /home/agent-admin
+drwxr-x---  1 agent-admin agent-common 40 Sep 28 07:09 /home/agent-admin/agent-app
+drwxrws---+ 1 agent-admin agent-core    0 Sep 28 07:09 /home/agent-admin/agent-app/api_keys
+drwxrws---+ 1 agent-admin agent-common  0 Sep 28 07:09 /home/agent-admin/agent-app/upload_files
+drwxrws---+ 1 agent-admin agent-core    0 Sep 28 07:09 /var/log/agent-app
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo getfacl -p /home/agent-admin /home/agent-admin/agent-app/upload_files /home/agent-admin/agent-app/api_keys /var/log/agent-app
+# file: /home/agent-admin
+# owner: agent-admin
+# group: agent-admin
+user::rwx
+group::r-x
+group:agent-common:--x
+mask::r-x
+other::---
+
+# file: /home/agent-admin/agent-app/upload_files
+# owner: agent-admin
+# group: agent-common
+# flags: -s-
+user::rwx
+group::rwx
+other::---
+default:user::rwx
+default:group::rwx
+default:group:agent-common:rwx
+default:mask::rwx
+default:other::---
+
+# file: /home/agent-admin/agent-app/api_keys
+# owner: agent-admin
+# group: agent-core
+# flags: -s-
+user::rwx
+group::rwx
+other::---
+default:user::rwx
+default:group::rwx
+default:group:agent-core:rwx
+default:mask::rwx
+default:other::---
+
+# file: /var/log/agent-app
+# owner: agent-admin
+# group: agent-core
+# flags: -s-
+user::rwx
+group::rwx
+other::---
+default:user::rwx
+default:group::rwx
+default:group:agent-core:rwx
+default:mask::rwx
+default:other::---
+
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 6. 접근 테스트
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -u agent-test touch /home/agent-admin/agent-app/upload_files/test.txt
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -u agent-dev bash -c 'echo dev >> /home/agent-admin/agent-app/upload_files/test.txt'
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ls -l /home/agent-admin/agent-app/upload_files/
+total 4
+-rw-rw----+ 1 agent-test agent-common 4 Sep 28 07:09 test.txt
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -u agent-test ls /home/agent-admin/agent-app/api_keys
+ls: cannot open directory '/home/agent-admin/agent-app/api_keys': Permission denied
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -u agent-test touch /var/log/agent-app/test.log
+touch: cannot touch '/var/log/agent-app/test.log': Permission denied
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -u agent-dev touch /var/log/agent-app/test.log
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ls -l /var/log/agent-app/
+total 0
+-rw-rw----+ 1 agent-dev agent-core 0 Sep 28 07:09 test.log
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -u agent-test ls /home/agent-admin
+ls: cannot open directory '/home/agent-admin': Permission denied
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo rm /home/agent-admin/agent-app/upload_files/test.txt /var/log/agent-app/test.log
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ exit
+logout
+jungbin-MacBookPro% exit
