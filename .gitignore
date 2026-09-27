@@ -1,5 +1,5 @@
 # 키 파일은 저장소에 두지 않음 (setup.sh가 생성)
 *.key
-# 원본 녹화 로그 (제어문자 포함), 정리된 버전만 커밋
-docs/evidence/*.raw.log
+# 터미널 녹화 원본 (제어문자 포함), 정리본만 커밋
+*.raw.log
 .DS_Store

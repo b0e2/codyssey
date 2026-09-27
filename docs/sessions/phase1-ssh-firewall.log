@@ -1,0 +1,46 @@
+jungbin-MacBookPro% orb -m agent-lab
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ grep -nE '^#?(Port|PermitRootLogin) ' /etc/ssh/sshd_config
+14:#Port 22
+33:#PermitRootLogin prohibit-password
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo sed -i 's/^#\?Port .*/Port 20022/' /etc/ssh/sshd_config
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin no/' /etc/ssh/sshd_config
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ grep -nE '^(Port|PermitRootLogin) ' /etc/ssh/sshd_config
+14:Port 20022
+33:PermitRootLogin no
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo sshd -t && echo "문법 OK"
+문법 OK
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo systemctl restart ssh
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ss -tlnp | grep sshd
+LISTEN 0      128          0.0.0.0:20022      0.0.0.0:*    users:(("sshd",pid=3292,fd=3))
+LISTEN 0      128             [::]:20022         [::]:*    users:(("sshd",pid=3292,fd=4))
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ufw default deny incoming
+Default incoming policy changed to 'deny'
+(be sure to update your rules accordingly)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ufw default allow outgoing
+Default outgoing policy changed to 'allow'
+(be sure to update your rules accordingly)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ufw allow 20022/tcp
+Rules updated
+Rules updated (v6)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ufw allow 15034/tcp
+Rules updated
+Rules updated (v6)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ufw enable
+Firewall is active and enabled on system startup
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ufw status verbose
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+20022/tcp                  ALLOW IN    Anywhere
+15034/tcp                  ALLOW IN    Anywhere
+20022/tcp (v6)             ALLOW IN    Anywhere (v6)
+15034/tcp (v6)             ALLOW IN    Anywhere (v6)
+
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ exit
+logout
+jungbin-MacBookPro% exit
