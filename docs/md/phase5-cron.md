@@ -1,6 +1,6 @@
 # Phase 5. cron 자동 실행
 
-기록: [sessions/phase5-cron.log](sessions/phase5-cron.log)
+기록: [log/phase5-cron.log](../log/phase5-cron.log)
 
 ## 목표
 

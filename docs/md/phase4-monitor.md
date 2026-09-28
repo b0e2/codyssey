@@ -1,6 +1,6 @@
 # Phase 4. monitor.sh
 
-기록: [sessions/phase4-monitor.log](sessions/phase4-monitor.log) · 소스: [scripts/monitor.sh](../scripts/monitor.sh)
+기록: [log/phase4-monitor.log](../log/phase4-monitor.log) · 소스: [scripts/monitor.sh](../../scripts/monitor.sh)
 
 ## 목표
 

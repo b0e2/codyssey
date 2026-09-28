@@ -1,6 +1,6 @@
 # Phase 6-1. report.sh
 
-기록: [sessions/phase6-report.log](sessions/phase6-report.log) · 소스: [scripts/report.sh](../scripts/report.sh)
+기록: [log/phase6-report.log](../log/phase6-report.log) · 소스: [scripts/report.sh](../../scripts/report.sh)
 
 ## 목표
 

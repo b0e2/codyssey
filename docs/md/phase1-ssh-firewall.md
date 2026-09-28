@@ -1,6 +1,6 @@
 # Phase 1. SSH, 방화벽
 
-기록: [sessions/phase1-ssh-firewall.log](sessions/phase1-ssh-firewall.log)
+기록: [log/phase1-ssh-firewall.log](../log/phase1-ssh-firewall.log)
 
 ## 목표
 

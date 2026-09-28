@@ -1,6 +1,6 @@
 # Phase 0. 실습 환경
 
-기록: [sessions/phase0-install.log](sessions/phase0-install.log)
+기록: [log/phase0-install.log](../log/phase0-install.log)
 
 ## 목표
 

@@ -1,6 +1,6 @@
 # Phase 3. 앱 실행 환경
 
-기록: [sessions/phase3-app-env.log](sessions/phase3-app-env.log)
+기록: [log/phase3-app-env.log](../log/phase3-app-env.log)
 
 ## 목표
 
