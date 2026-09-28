@@ -1,6 +1,6 @@
 # Phase 2. 계정, 그룹, 디렉토리 권한
 
-기록: [sessions/phase2-account-permission.log](sessions/phase2-account-permission.log)
+기록: [log/phase2-account-permission.log](../log/phase2-account-permission.log)
 
 ## 목표
 

@@ -1,6 +1,6 @@
 # Phase 6-2. 로그 보존 정책
 
-기록: [sessions/phase6-log-archive.log](sessions/phase6-log-archive.log) · 소스: [scripts/log-archive.sh](../scripts/log-archive.sh)
+기록: [log/phase6-log-archive.log](../log/phase6-log-archive.log) · 소스: [scripts/log-archive.sh](../../scripts/log-archive.sh)
 
 ## 목표
 
