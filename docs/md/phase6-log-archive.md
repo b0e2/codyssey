@@ -20,7 +20,7 @@ find "$ARCHIVE_DIR"   -maxdepth 1 -type f -name '*.gz'  -mtime +29   # 30일 이
 - `-mtime`은 경과 일수를 버림해서 비교한다. `+6`이 7일 이상이다.
 - `gzip`은 원본 수정 시각을 유지한다. 30일 기준이 압축한 날이 아니라 로그가 마지막으로 기록된 날부터 계산된다.
 - 같은 이름의 압축본이 아카이브에 있으면 덮어쓰지 않고 건너뛴다.
-- 로그와 아카이브 경로가 서로 다른 트리(`/var/log/agent-app`, `/var/log/monitor/agent-app`)인데 명세 경로를 그대로 따랐다.
+- 로그와 아카이브는 서로 다른 트리(`/var/log/agent-app`, `/var/log/monitor/agent-app`)에 둔다.
 
 예외 처리 기준:
 
