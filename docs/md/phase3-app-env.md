@@ -9,21 +9,21 @@
 - agent-admin 계정으로 앱 실행, Boot Sequence 5단계 [OK]와 Agent READY
 - `0.0.0.0:15034` LISTEN
 
-## 명세와 앱의 차이
+## 키 경로 설정
 
-명세 값 그대로 설정했을 때 앱이 부팅에 실패했다. 앱이 출력한 메시지로 기대값을 확인했다.
+처음에는 `AGENT_KEY_PATH`를 키 파일 경로(`$AGENT_HOME/api_keys/t_secret.key`)로 설정했는데 부팅에 실패했다. 앱이 출력한 메시지로 기대값을 확인했다.
 
-| 항목 | 명세 | 앱 요구 | 앱 메시지 |
+| 항목 | 처음 설정 | 앱이 읽는 값 | 앱 메시지 |
 | --- | --- | --- | --- |
 | `AGENT_KEY_PATH` | `$AGENT_HOME/api_keys/t_secret.key` | `$AGENT_HOME/api_keys` | `Key Path Mismatch. Expected: /home/agent-admin/agent-app/api_keys` |
 | 키 파일 이름 | `t_secret.key` | `secret.key` | `Missing File: secret.key` |
 
 arm64, x86 바이너리의 날짜가 달라(5/18, 5/20) 버전 차이일 수 있다고 보고 x86 바이너리도 amd64 머신에서 실행해 봤다. 결과는 같았다.
 
-성공 기준이 Boot 5단계 통과라서 앱 요구에 맞췄다.
+앱이 읽는 값에 맞췄다.
 
 - `AGENT_KEY_PATH`는 디렉토리 경로로 설정
-- 키 파일은 명세대로 `t_secret.key`로 만들고, `secret.key`는 이 파일을 가리키는 심볼릭 링크로 두었다. 키 원본은 하나만 관리한다.
+- 키 파일은 `t_secret.key`로 만들고, `secret.key`는 이 파일을 가리키는 심볼릭 링크로 두었다. 키 원본은 하나만 관리한다.
 
 ## 진행
 

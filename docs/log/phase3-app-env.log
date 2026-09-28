@@ -29,7 +29,7 @@ total 7364
 -rwxr-x---  1 agent-admin agent-core   7537848 Sep 28 07:16 agent-app-linux-arm64
 drwxrws---+ 1 agent-admin agent-core         0 Sep 28 07:16 api_keys
 drwxrws---+ 1 agent-admin agent-common       0 Sep 28 07:09 upload_files
-jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 2. 키 파일 (명세 t_secret.key, 앱이 읽는 secret.key는 링크)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 2. 키 파일 (t_secret.key, 앱이 읽는 secret.key는 링크)
 jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ echo 'agent_api_key_test' | sudo tee /home/agent-admin/agent-app/api_keys/t_secret.key
 agent_api_key_test
 jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chown agent-admin:agent-core /home/agent-admin/agent-app/api_keys/t_secret.key
