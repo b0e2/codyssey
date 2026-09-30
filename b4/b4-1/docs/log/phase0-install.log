@@ -1,0 +1,167 @@
+jungbin-MacBookPro% orb create ubuntu:22.04 agent-lab
+jungbin-MacBookPro% orb list
+NAME       STATE    DISTRO  VERSION  ARCH   SIZE      IP
+----       -----    ------  -------  ----   ----      --
+agent-lab  running  ubuntu  jammy    arm64  717.6 MB  192.168.139.109
+jungbin-MacBookPro% orb -m agent-lab
+To run a command as administrator (user "root"), use "sudo <command>".
+See "man sudo_root" for details.
+
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ cat /etc/os-release | head -2
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+NAME="Ubuntu"
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ uname -m
+aarch64
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo whoami
+root
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo apt-get update
+Hit:1 http://ports.ubuntu.com/ubuntu-ports jammy InRelease
+Hit:2 http://ports.ubuntu.com/ubuntu-ports jammy-updates InRelease
+Hit:3 http://ports.ubuntu.com/ubuntu-ports jammy-security InRelease
+Reading package lists... Done
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo apt-get install -y openssh-server ufw acl cron
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+cron is already the newest version (3.0pl1-137ubuntu3).
+The following additional packages will be installed:
+  iptables libip6tc2 libnetfilter-conntrack3 libnfnetlink0 libnftnl11 libwrap0 ncurses-term openssh-sftp-server python3-distro ssh-import-id wget
+Suggested packages:
+  firewalld nftables molly-guard monkeysphere ssh-askpass
+The following NEW packages will be installed:
+  acl iptables libip6tc2 libnetfilter-conntrack3 libnfnetlink0 libnftnl11 libwrap0 ncurses-term openssh-server openssh-sftp-server python3-distro
+  ssh-import-id ufw wget
+0 upgraded, 14 newly installed, 0 to remove and 0 not upgraded.
+Need to get 1922 kB of archives.
+After this operation, 11.0 MB of additional disk space will be used.
+Get:1 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 openssh-sftp-server arm64 1:8.9p1-3ubuntu0.17 [36.7 kB]
+Get:2 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 libwrap0 arm64 7.6.q-31build2 [47.9 kB]
+Get:3 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 openssh-server arm64 1:8.9p1-3ubuntu0.17 [413 kB]
+Get:4 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libip6tc2 arm64 1.8.7-1ubuntu5.2 [20.2 kB]
+Get:5 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 libnfnetlink0 arm64 1.0.1-3build3 [14.2 kB]
+Get:6 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 libnetfilter-conntrack3 arm64 1.0.9-1 [44.5 kB]
+Get:7 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 libnftnl11 arm64 1.2.1-1build1 [64.5 kB]
+Get:8 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 iptables arm64 1.8.7-1ubuntu5.2 [451 kB]
+Get:9 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 ufw all 0.36.1-4ubuntu0.1 [162 kB]
+Get:10 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 wget arm64 1.21.2-2ubuntu1.5 [335 kB]
+Get:11 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 acl arm64 2.3.1-1 [38.6 kB]
+Get:12 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 ncurses-term all 6.3-2ubuntu0.3 [268 kB]
+Get:13 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 python3-distro all 1.7.0-1 [17.0 kB]
+Get:14 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 ssh-import-id all 5.11-0ubuntu1 [10.1 kB]
+Fetched 1922 kB in 3s (721 kB/s)
+debconf: unable to initialize frontend: Dialog
+debconf: (TERM is not set, so the dialog frontend is not usable.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC contains: /etc/perl /usr/local/lib/aarch64-linux-gnu/perl/5.34.0 /usr/local/share/perl/5.34.0 /usr/lib/aarch64-linux-gnu/perl5/5.34 /usr/share/perl5 /usr/lib/aarch64-linux-gnu/perl-base /usr/lib/aarch64-linux-gnu/perl/5.34 /usr/share/perl/5.34 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 7, <> line 14.)
+debconf: falling back to frontend: Teletype
+Preconfiguring packages ...
+Selecting previously unselected package openssh-sftp-server.
+(Reading database ... 16457 files and directories currently installed.)
+Preparing to unpack .../00-openssh-sftp-server_1%3a8.9p1-3ubuntu0.17_arm64.deb ...
+Unpacking openssh-sftp-server (1:8.9p1-3ubuntu0.17) ...
+Selecting previously unselected package libwrap0:arm64.
+Preparing to unpack .../01-libwrap0_7.6.q-31build2_arm64.deb ...
+Unpacking libwrap0:arm64 (7.6.q-31build2) ...
+Selecting previously unselected package openssh-server.
+Preparing to unpack .../02-openssh-server_1%3a8.9p1-3ubuntu0.17_arm64.deb ...
+Unpacking openssh-server (1:8.9p1-3ubuntu0.17) ...
+Selecting previously unselected package libip6tc2:arm64.
+Preparing to unpack .../03-libip6tc2_1.8.7-1ubuntu5.2_arm64.deb ...
+Unpacking libip6tc2:arm64 (1.8.7-1ubuntu5.2) ...
+Selecting previously unselected package libnfnetlink0:arm64.
+Preparing to unpack .../04-libnfnetlink0_1.0.1-3build3_arm64.deb ...
+Unpacking libnfnetlink0:arm64 (1.0.1-3build3) ...
+Selecting previously unselected package libnetfilter-conntrack3:arm64.
+Preparing to unpack .../05-libnetfilter-conntrack3_1.0.9-1_arm64.deb ...
+Unpacking libnetfilter-conntrack3:arm64 (1.0.9-1) ...
+Selecting previously unselected package libnftnl11:arm64.
+Preparing to unpack .../06-libnftnl11_1.2.1-1build1_arm64.deb ...
+Unpacking libnftnl11:arm64 (1.2.1-1build1) ...
+Selecting previously unselected package iptables.
+Preparing to unpack .../07-iptables_1.8.7-1ubuntu5.2_arm64.deb ...
+Unpacking iptables (1.8.7-1ubuntu5.2) ...
+Selecting previously unselected package ufw.
+Preparing to unpack .../08-ufw_0.36.1-4ubuntu0.1_all.deb ...
+Unpacking ufw (0.36.1-4ubuntu0.1) ...
+Selecting previously unselected package wget.
+Preparing to unpack .../09-wget_1.21.2-2ubuntu1.5_arm64.deb ...
+Unpacking wget (1.21.2-2ubuntu1.5) ...
+Selecting previously unselected package acl.
+Preparing to unpack .../10-acl_2.3.1-1_arm64.deb ...
+Unpacking acl (2.3.1-1) ...
+Selecting previously unselected package ncurses-term.
+Preparing to unpack .../11-ncurses-term_6.3-2ubuntu0.3_all.deb ...
+Unpacking ncurses-term (6.3-2ubuntu0.3) ...
+Selecting previously unselected package python3-distro.
+Preparing to unpack .../12-python3-distro_1.7.0-1_all.deb ...
+Unpacking python3-distro (1.7.0-1) ...
+Selecting previously unselected package ssh-import-id.
+Preparing to unpack .../13-ssh-import-id_5.11-0ubuntu1_all.deb ...
+Unpacking ssh-import-id (5.11-0ubuntu1) ...
+Setting up openssh-sftp-server (1:8.9p1-3ubuntu0.17) ...
+Setting up python3-distro (1.7.0-1) ...
+Setting up wget (1.21.2-2ubuntu1.5) ...
+Setting up libip6tc2:arm64 (1.8.7-1ubuntu5.2) ...
+Setting up ssh-import-id (5.11-0ubuntu1) ...
+Setting up libnftnl11:arm64 (1.2.1-1build1) ...
+Setting up acl (2.3.1-1) ...
+Setting up libwrap0:arm64 (7.6.q-31build2) ...
+Setting up libnfnetlink0:arm64 (1.0.1-3build3) ...
+Setting up ncurses-term (6.3-2ubuntu0.3) ...
+Setting up openssh-server (1:8.9p1-3ubuntu0.17) ...
+debconf: unable to initialize frontend: Dialog
+debconf: (TERM is not set, so the dialog frontend is not usable.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC contains: /etc/perl /usr/local/lib/aarch64-linux-gnu/perl/5.34.0 /usr/local/share/perl/5.34.0 /usr/lib/aarch64-linux-gnu/perl5/5.34 /usr/share/perl5 /usr/lib/aarch64-linux-gnu/perl-base /usr/lib/aarch64-linux-gnu/perl/5.34 /usr/share/perl/5.34 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 7.)
+debconf: falling back to frontend: Teletype
+
+Creating config file /etc/ssh/sshd_config with new version
+Creating SSH2 RSA key; this may take some time ...
+3072 SHA256:eW2BPEHOTARXPSTEPErxntPuvlDe4OUst6rTEQ8bRsk root@agent-lab (RSA)
+Creating SSH2 ECDSA key; this may take some time ...
+256 SHA256:qJyqxB/+D4PEeOqhI63HQkeJQQMLSaYoRUldlNphWSg root@agent-lab (ECDSA)
+Creating SSH2 ED25519 key; this may take some time ...
+256 SHA256:5N1SvoNK5mewf1DIGSxC+iu/H635Gw+0pAoY71WTl/M root@agent-lab (ED25519)
+Created symlink /etc/systemd/system/sshd.service → /lib/systemd/system/ssh.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/ssh.service → /lib/systemd/system/ssh.service.
+rescue-ssh.target is a disabled or a static unit, not starting it.
+ssh.socket is a disabled or a static unit, not starting it.
+Setting up libnetfilter-conntrack3:arm64 (1.0.9-1) ...
+Setting up iptables (1.8.7-1ubuntu5.2) ...
+update-alternatives: using /usr/sbin/iptables-legacy to provide /usr/sbin/iptables (iptables) in auto mode
+update-alternatives: using /usr/sbin/ip6tables-legacy to provide /usr/sbin/ip6tables (ip6tables) in auto mode
+update-alternatives: using /usr/sbin/iptables-nft to provide /usr/sbin/iptables (iptables) in auto mode
+update-alternatives: using /usr/sbin/ip6tables-nft to provide /usr/sbin/ip6tables (ip6tables) in auto mode
+update-alternatives: using /usr/sbin/arptables-nft to provide /usr/sbin/arptables (arptables) in auto mode
+update-alternatives: using /usr/sbin/ebtables-nft to provide /usr/sbin/ebtables (ebtables) in auto mode
+Setting up ufw (0.36.1-4ubuntu0.1) ...
+debconf: unable to initialize frontend: Dialog
+debconf: (TERM is not set, so the dialog frontend is not usable.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC contains: /etc/perl /usr/local/lib/aarch64-linux-gnu/perl/5.34.0 /usr/local/share/perl/5.34.0 /usr/lib/aarch64-linux-gnu/perl5/5.34 /usr/share/perl5 /usr/lib/aarch64-linux-gnu/perl-base /usr/lib/aarch64-linux-gnu/perl/5.34 /usr/share/perl/5.34 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 7.)
+debconf: falling back to frontend: Teletype
+
+Creating config file /etc/ufw/before.rules with new version
+
+Creating config file /etc/ufw/before6.rules with new version
+
+Creating config file /etc/ufw/after.rules with new version
+
+Creating config file /etc/ufw/after6.rules with new version
+Created symlink /etc/systemd/system/multi-user.target.wants/ufw.service → /lib/systemd/system/ufw.service.
+Processing triggers for rsyslog (8.2112.0-2ubuntu2.5) ...
+Processing triggers for libc-bin (2.35-0ubuntu3.15) ...
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ systemctl is-active ssh
+active
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ systemctl is-active cron
+active
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ufw status
+Status: inactive
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ getfacl --version
+getfacl 2.3.1
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ exit
+logout
+jungbin-MacBookPro% exit

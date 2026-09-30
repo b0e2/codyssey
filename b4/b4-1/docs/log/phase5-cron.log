@@ -1,0 +1,32 @@
+jungbin-MacBookPro% orb -m agent-lab
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 1. crontab 등록 (agent-admin)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -iu agent-admin
+agent-admin@agent-lab:~$ crontab -l
+no crontab for agent-admin
+agent-admin@agent-lab:~$ echo '* * * * * /home/agent-admin/agent-app/bin/monitor.sh > /dev/null 2>&1' | crontab -
+agent-admin@agent-lab:~$ crontab -l
+* * * * * /home/agent-admin/agent-app/bin/monitor.sh > /dev/null 2>&1
+agent-admin@agent-lab:~$ # 2. 자동 실행 확인 (2분 대기 전후 비교)
+agent-admin@agent-lab:~$ date '+%F %T'; wc -l < $AGENT_LOG_DIR/monitor.log
+2026-09-28 07:35:26
+9
+agent-admin@agent-lab:~$ sleep 125
+agent-admin@agent-lab:~$ date '+%F %T'; wc -l < $AGENT_LOG_DIR/monitor.log
+2026-09-28 07:37:32
+11
+agent-admin@agent-lab:~$ tail -4 $AGENT_LOG_DIR/monitor.log
+[2026-09-28 07:31:37] PID:6934 CPU:1.7% MEM:15.5% DISK_USED:8%
+[2026-09-28 07:35:03] PID:6934 CPU:1.1% MEM:14.5% DISK_USED:8%
+[2026-09-28 07:36:02] PID:6934 CPU:2.1% MEM:19.5% DISK_USED:8%
+[2026-09-28 07:37:02] PID:6934 CPU:2.5% MEM:17.3% DISK_USED:8%
+agent-admin@agent-lab:~$ exit
+logout
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 3. cron 실행 기록
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo crontab -u agent-admin -l
+* * * * * /home/agent-admin/agent-app/bin/monitor.sh > /dev/null 2>&1
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo grep 'CRON.*agent-admin' /var/log/syslog | tail -3
+Sep 28 07:36:01 agent-lab CRON[7525]: (agent-admin) CMD (/home/agent-admin/agent-app/bin/monitor.sh > /dev/null 2>&1)
+Sep 28 07:37:01 agent-lab CRON[7544]: (agent-admin) CMD (/home/agent-admin/agent-app/bin/monitor.sh > /dev/null 2>&1)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ exit
+logout
+jungbin-MacBookPro% exit

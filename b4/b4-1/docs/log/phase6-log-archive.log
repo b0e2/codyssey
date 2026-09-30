@@ -1,0 +1,105 @@
+jungbin-MacBookPro% orb -m agent-lab
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 1. 아카이브 디렉토리 (agent-core 전용)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo mkdir -p /var/log/monitor/agent-app/archive
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chown agent-admin:agent-core /var/log/monitor/agent-app/archive
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chmod 2770 /var/log/monitor/agent-app/archive
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ls -ld /var/log/monitor /var/log/monitor/agent-app /var/log/monitor/agent-app/archive
+drwxr-xr-x 1 root        root       18 Sep 28 07:43 /var/log/monitor
+drwxr-xr-x 1 root        root       14 Sep 28 07:43 /var/log/monitor/agent-app
+drwxrws--- 1 agent-admin agent-core  0 Sep 28 07:43 /var/log/monitor/agent-app/archive
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 2. 스크립트 배치
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo cp /Users/jeongbin/Desktop/b4-1/scripts/log-archive.sh /home/agent-admin/agent-app/bin/
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chown agent-dev:agent-core /home/agent-admin/agent-app/bin/log-archive.sh
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chmod 750 /home/agent-admin/agent-app/bin/log-archive.sh
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ls -l /home/agent-admin/agent-app/bin
+total 12
+-rwxr-x--- 1 agent-dev agent-core 2368 Sep 28 07:43 log-archive.sh
+-rwxr-x--- 1 agent-dev agent-core 3435 Sep 28 07:31 monitor.sh
+-rwxr-x--- 1 agent-dev agent-core 2257 Sep 28 07:39 report.sh
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 3. 테스트 파일 (수정 시각을 과거로 설정)
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -iu agent-admin
+agent-admin@agent-lab:~$ A=/var/log/monitor/agent-app/archive
+agent-admin@agent-lab:~$ echo '[2026-09-20 03:00:01] PID:1234 CPU:1.0% MEM:12.0% DISK_USED:8%' > $AGENT_LOG_DIR/monitor.20260920-030001.log
+agent-admin@agent-lab:~$ touch -d '8 days ago' $AGENT_LOG_DIR/monitor.20260920-030001.log
+agent-admin@agent-lab:~$ echo 'recent' > $AGENT_LOG_DIR/recent-test.log
+agent-admin@agent-lab:~$ touch -d '3 days ago' $AGENT_LOG_DIR/recent-test.log
+agent-admin@agent-lab:~$ echo 'old archive' | gzip > $A/monitor.20260825-030001.log.gz
+agent-admin@agent-lab:~$ touch -d '31 days ago' $A/monitor.20260825-030001.log.gz
+agent-admin@agent-lab:~$ echo 'mid archive' | gzip > $A/monitor.20260908-030001.log.gz
+agent-admin@agent-lab:~$ touch -d '20 days ago' $A/monitor.20260908-030001.log.gz
+agent-admin@agent-lab:~$ ls -l --time-style=long-iso $AGENT_LOG_DIR $A
+/var/log/agent-app:
+total 92
+-rw-rw----+ 1 agent-admin agent-core 79361 2026-09-28 07:43 agent_app.log
+-rw-rw----+ 1 agent-admin agent-core    63 2026-09-20 07:43 monitor.20260920-030001.log
+-rw-rw----+ 1 agent-admin agent-core  1076 2026-09-28 07:43 monitor.log
+-rw-rw----+ 1 agent-admin agent-core     7 2026-09-25 07:43 recent-test.log
+
+/var/log/monitor/agent-app/archive:
+total 8
+-rw-rw-r-- 1 agent-admin agent-core 32 2026-08-28 07:43 monitor.20260825-030001.log.gz
+-rw-rw-r-- 1 agent-admin agent-core 32 2026-09-08 07:43 monitor.20260908-030001.log.gz
+agent-admin@agent-lab:~$ # 4. 실행
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/log-archive.sh; echo "exit code: $?"
+[2026-09-28 07:44:00] [INFO] Start (logs: /var/log/agent-app, archive: /var/log/monitor/agent-app/archive)
+[2026-09-28 07:44:00] [INFO] Archived: monitor.20260920-030001.log -> /var/log/monitor/agent-app/archive/monitor.20260920-030001.log.gz
+[2026-09-28 07:44:00] [INFO] Deleted: monitor.20260825-030001.log.gz
+[2026-09-28 07:44:00] [INFO] Done (archived: 1, skipped: 0, deleted: 1)
+exit code: 0
+agent-admin@agent-lab:~$ ls -l --time-style=long-iso $AGENT_LOG_DIR $A
+/var/log/agent-app:
+total 88
+-rw-rw----+ 1 agent-admin agent-core 79361 2026-09-28 07:43 agent_app.log
+-rw-rw----+ 1 agent-admin agent-core  1076 2026-09-28 07:43 monitor.log
+-rw-rw----+ 1 agent-admin agent-core     7 2026-09-25 07:43 recent-test.log
+
+/var/log/monitor/agent-app/archive:
+total 8
+-rw-rw-r--  1 agent-admin agent-core  32 2026-09-08 07:43 monitor.20260908-030001.log.gz
+-rw-rw----+ 1 agent-admin agent-core 107 2026-09-20 07:43 monitor.20260920-030001.log.gz
+agent-admin@agent-lab:~$ zcat $A/monitor.20260920-030001.log.gz
+[2026-09-20 03:00:01] PID:1234 CPU:1.0% MEM:12.0% DISK_USED:8%
+agent-admin@agent-lab:~$ # 5. 재실행 (대상 0개)
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/log-archive.sh; echo "exit code: $?"
+[2026-09-28 07:44:02] [INFO] Start (logs: /var/log/agent-app, archive: /var/log/monitor/agent-app/archive)
+[2026-09-28 07:44:02] [INFO] No logs older than 7 days
+[2026-09-28 07:44:02] [INFO] No archives older than 30 days
+[2026-09-28 07:44:02] [INFO] Done (archived: 0, skipped: 0, deleted: 0)
+exit code: 0
+agent-admin@agent-lab:~$ # 6. 예외 처리
+agent-admin@agent-lab:~$ AGENT_LOG_DIR=/nonexistent $AGENT_HOME/bin/log-archive.sh; echo "exit code: $?"
+[2026-09-28 07:44:02] [INFO] Start (logs: /nonexistent, archive: /var/log/monitor/agent-app/archive)
+[2026-09-28 07:44:02] [WARNING] Log directory not found, skip compression: /nonexistent
+[2026-09-28 07:44:02] [INFO] No archives older than 30 days
+[2026-09-28 07:44:02] [INFO] Done (archived: 0, skipped: 0, deleted: 0)
+exit code: 0
+agent-admin@agent-lab:~$ AGENT_LOG_DIR=/var/log $AGENT_HOME/bin/log-archive.sh; echo "exit code: $?"
+[2026-09-28 07:44:03] [INFO] Start (logs: /var/log, archive: /var/log/monitor/agent-app/archive)
+[2026-09-28 07:44:03] [WARNING] No write permission, skip compression: /var/log
+[2026-09-28 07:44:03] [INFO] No archives older than 30 days
+[2026-09-28 07:44:03] [INFO] Done (archived: 0, skipped: 0, deleted: 0)
+exit code: 0
+agent-admin@agent-lab:~$ ARCHIVE_DIR=/root/archive $AGENT_HOME/bin/log-archive.sh; echo "exit code: $?"
+[2026-09-28 07:44:03] [INFO] Start (logs: /var/log/agent-app, archive: /root/archive)
+[2026-09-28 07:44:03] [ERROR] Cannot create archive directory: /root/archive
+exit code: 1
+agent-admin@agent-lab:~$ # 7. 테스트 파일 정리
+agent-admin@agent-lab:~$ rm -f $AGENT_LOG_DIR/recent-test.log $A/monitor.20260920-030001.log.gz $A/monitor.20260908-030001.log.gz
+agent-admin@agent-lab:~$ ls -l $AGENT_LOG_DIR $A
+/var/log/agent-app:
+total 84
+-rw-rw----+ 1 agent-admin agent-core 79361 Sep 28 07:43 agent_app.log
+-rw-rw----+ 1 agent-admin agent-core  1139 Sep 28 07:44 monitor.log
+
+/var/log/monitor/agent-app/archive:
+total 0
+agent-admin@agent-lab:~$ # 8. cron 등록 (매일 03:00, 실행 결과는 log-archive.log에 누적)
+agent-admin@agent-lab:~$ (crontab -l; echo '0 3 * * * /home/agent-admin/agent-app/bin/log-archive.sh >> /var/log/agent-app/log-archive.log 2>&1') | crontab -
+agent-admin@agent-lab:~$ crontab -l
+* * * * * /home/agent-admin/agent-app/bin/monitor.sh > /dev/null 2>&1
+0 3 * * * /home/agent-admin/agent-app/bin/log-archive.sh >> /var/log/agent-app/log-archive.log 2>&1
+agent-admin@agent-lab:~$ exit
+logout
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ exit
+logout
+jungbin-MacBookPro% exit

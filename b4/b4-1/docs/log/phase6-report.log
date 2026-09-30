@@ -1,0 +1,66 @@
+jungbin-MacBookPro% orb -m agent-lab
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 1. 스크립트 배치
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo cp /Users/jeongbin/Desktop/b4-1/scripts/report.sh /home/agent-admin/agent-app/bin/
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chown agent-dev:agent-core /home/agent-admin/agent-app/bin/report.sh
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo chmod 750 /home/agent-admin/agent-app/bin/report.sh
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo ls -l /home/agent-admin/agent-app/bin
+total 8
+-rwxr-x--- 1 agent-dev agent-core 3435 Sep 28 07:31 monitor.sh
+-rwxr-x--- 1 agent-dev agent-core 2257 Sep 28 07:39 report.sh
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ # 2. 전체 기간 통계
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ sudo -iu agent-admin
+agent-admin@agent-lab:~$ wc -l < $AGENT_LOG_DIR/monitor.log
+13
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/report.sh
+====== STATISTICS REPORT ======
+  Period : 2026-09-28 07:31:10 ~ 2026-09-28 07:39:02
+  [CPU]
+    Average : 4.5%
+    Maximum : 37.7% at 2026-09-28 07:31:18
+    Minimum : 0.1% at 2026-09-28 07:39:02
+  [Memory]
+    Average : 16.1%
+    Maximum : 19.5% at 2026-09-28 07:36:02
+    Minimum : 14.1% at 2026-09-28 07:31:13
+  [Disk]
+    Average : 8.0%
+    Maximum : 8.0% at 2026-09-28 07:31:10
+    Minimum : 8.0% at 2026-09-28 07:31:10
+  [Samples]
+    Data Points: 12 samples
+agent-admin@agent-lab:~$ # 3. 구간 지정 (최근 5분)
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/report.sh "$(date -d '5 minutes ago' '+%F %T')" "$(date '+%F %T')"
+====== STATISTICS REPORT ======
+  Period : 2026-09-28 07:35:03 ~ 2026-09-28 07:39:02
+  [CPU]
+    Average : 1.6%
+    Maximum : 2.5% at 2026-09-28 07:37:02
+    Minimum : 0.1% at 2026-09-28 07:39:02
+  [Memory]
+    Average : 17.5%
+    Maximum : 19.5% at 2026-09-28 07:36:02
+    Minimum : 14.5% at 2026-09-28 07:35:03
+  [Disk]
+    Average : 8.0%
+    Maximum : 8.0% at 2026-09-28 07:35:03
+    Minimum : 8.0% at 2026-09-28 07:35:03
+  [Samples]
+    Data Points: 5 samples
+agent-admin@agent-lab:~$ # 4. 잘못된 입력
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/report.sh "2026-09-28"; echo "exit code: $?"
+Usage: /home/agent-admin/agent-app/bin/report.sh ["YYYY-MM-DD HH:MM:SS" "YYYY-MM-DD HH:MM:SS"]
+exit code: 1
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/report.sh "yesterday" "today"; echo "exit code: $?"
+[ERROR] Time format must be YYYY-MM-DD HH:MM:SS
+exit code: 1
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/report.sh "2026-09-28 09:00:00" "2026-09-28 08:00:00"; echo "exit code: $?"
+[ERROR] Start time is later than end time
+exit code: 1
+agent-admin@agent-lab:~$ $AGENT_HOME/bin/report.sh "2030-01-01 00:00:00" "2030-01-01 01:00:00"; echo "exit code: $?"
+[INFO] No samples in the given period
+exit code: 1
+agent-admin@agent-lab:~$ exit
+logout
+jeongbin@agent-lab:/Users/jeongbin/Desktop/b4-1$ exit
+logout
+jungbin-MacBookPro% exit
