@@ -1,0 +1,207 @@
+jungbin-MacBookPro% orb -m leak-lab
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ sudo -iu agent-admin
+agent-admin@leak-lab:~$ sed -i 's/^export MEMORY_LIMIT=.*/export MEMORY_LIMIT=256/' ~/.bash_profile
+agent-admin@leak-lab:~$ source ~/.bash_profile
+agent-admin@leak-lab:~$ echo "MEMORY_LIMIT=$MEMORY_LIMIT CPU_MAX_OCCUPY=$CPU_MAX_OCCUPY MULTI_THREAD_ENABLE=$MULTI_THREAD_ENABLE"
+MEMORY_LIMIT=256 CPU_MAX_OCCUPY=30 MULTI_THREAD_ENABLE=false
+agent-admin@leak-lab:~$ (sleep 2; while ~/agent-app/bin/monitor.sh > /dev/null; do :; done) &
+[1] 2547
+agent-admin@leak-lab:~$ date +%T; $AGENT_HOME/agent-leak-app-arm64; echo "exit=$?"; date +%T
+01:24:35
+>>> Starting Agent Boot Sequence...
+[1/6] Checking User Account               [OK]
+   ... Running as service user 'agent-admin' (uid=1000)
+[2/6] Verifying Environment Variables     [OK]
+   ... All required Envs correct
+[3/6] Checking Required Files             [OK]
+   ... Verified 'secret.key' with correct key string.
+[4/6] Checking Port Availability          [OK]
+   ... Port 15034 is available.
+[5/6] Verifying Log Permission            [OK]
+   ... Log directory is writable: /var/log/agent-app
+[6/6] Verifying Mission Environment       [OK]
+   ... MEMORY_LIMIT=256MB, CPU_MAX_OCCUPY=30%, MULTI_THREAD_ENABLE=False
+------------------------------------------------------------
+All Boot Checks Passed!
+Agent READY
+2026-10-01 01:24:35,876 [INFO] [SafetyGuard] Process priority lowered (nice=10).
+2026-10-01 01:24:35,876 [INFO] Agent listening at port 15034
+
+==================================================
+ [ Agent Initiate ] Resource Check
+==================================================
+ [ MEMORY ] Limit: 256MB                [ WARNING: Recommend Over 256MB ]
+ [ CPU    ] Limit: 30%                  [ OK ]
+ [ THREAD ] Concurrency: False          [ OK ]
+--------------------------------------------------
+ >>> SYSTEM STATUS: STABLE. STARTING WORKLOAD MONITORING...
+==================================================
+
+2026-10-01 01:24:37,905 [INFO] [MemoryWorker] Current Heap: 25MB
+2026-10-01 01:24:40,946 [INFO] [MemoryWorker] Current Heap: 50MB
+2026-10-01 01:24:43,984 [INFO] [MemoryWorker] Current Heap: 75MB
+2026-10-01 01:24:47,018 [INFO] [MemoryWorker] Current Heap: 100MB
+2026-10-01 01:24:50,051 [INFO] [MemoryWorker] Current Heap: 125MB
+2026-10-01 01:24:53,083 [INFO] [MemoryWorker] Current Heap: 150MB
+2026-10-01 01:24:56,115 [INFO] [MemoryWorker] Current Heap: 175MB
+2026-10-01 01:24:59,151 [INFO] [MemoryWorker] Current Heap: 200MB
+2026-10-01 01:25:02,188 [INFO] [MemoryWorker] Current Heap: 225MB
+2026-10-01 01:25:05,223 [INFO] [MemoryWorker] Current Heap: 250MB
+2026-10-01 01:25:08,261 [INFO] [MemoryWorker] Current Heap: 275MB
+2026-10-01 01:25:08,261 [CRITICAL] [MemoryGuard] Memory limit exceeded (275MB >= 256MB) / (Recommend Over 256MB)
+2026-10-01 01:25:08,262 [CRITICAL] [MemoryGuard] Self-terminating process 2551 to prevent system instability.
+
+>>> [SYSTEM] SELF-TERMINATED (Memory Limit Exceeded) <<<
+
+Killed
+exit=137
+01:25:08
+agent-admin@leak-lab:~$ sleep 4
+[1]+  Done                    ( sleep 2; while ~/agent-app/bin/monitor.sh > /dev/null; do
+    :;
+done )
+agent-admin@leak-lab:~$ cat $AGENT_LOG_DIR/monitor.log
+[2026-10-01 01:24:40] PID:2551 STAT:S THREADS:1 CPU:1.0% RSS:41MB MEM:1.0% SYS_CPU:0.1% SYS_MEM:11.5% LOG_IDLE:3s
+[2026-10-01 01:24:43] PID:2551 STAT:S THREADS:1 CPU:0.3% RSS:66MB MEM:1.7% SYS_CPU:0.3% SYS_MEM:11.8% LOG_IDLE:3s
+[2026-10-01 01:24:46] PID:2551 STAT:S THREADS:1 CPU:1.0% RSS:91MB MEM:2.3% SYS_CPU:0.2% SYS_MEM:12.6% LOG_IDLE:3s
+[2026-10-01 01:24:49] PID:2551 STAT:S THREADS:1 CPU:0.3% RSS:116MB MEM:2.9% SYS_CPU:0.1% SYS_MEM:13.2% LOG_IDLE:2s
+[2026-10-01 01:24:52] PID:2551 STAT:S THREADS:1 CPU:0.3% RSS:141MB MEM:3.6% SYS_CPU:0.0% SYS_MEM:13.9% LOG_IDLE:2s
+[2026-10-01 01:24:55] PID:2551 STAT:S THREADS:1 CPU:0.3% RSS:166MB MEM:4.2% SYS_CPU:0.1% SYS_MEM:14.4% LOG_IDLE:2s
+[2026-10-01 01:24:58] PID:2551 STAT:S THREADS:1 CPU:0.7% RSS:191MB MEM:4.8% SYS_CPU:0.0% SYS_MEM:15.0% LOG_IDLE:2s
+[2026-10-01 01:25:01] PID:2551 STAT:S THREADS:1 CPU:0.7% RSS:216MB MEM:5.4% SYS_CPU:0.1% SYS_MEM:15.7% LOG_IDLE:2s
+[2026-10-01 01:25:04] PID:2551 STAT:S THREADS:1 CPU:0.3% RSS:241MB MEM:6.1% SYS_CPU:0.2% SYS_MEM:16.4% LOG_IDLE:2s
+[2026-10-01 01:25:07] PID:2551 STAT:S THREADS:1 CPU:1.0% RSS:266MB MEM:6.7% SYS_CPU:0.1% SYS_MEM:16.9% LOG_IDLE:2s
+[2026-10-01 01:25:10] PROCESS:down
+agent-admin@leak-lab:~$ grep CRITICAL $AGENT_LOG_DIR/agent_app.log
+2026-10-01 01:25:08,261 [CRITICAL] [MemoryGuard] Memory limit exceeded (275MB >= 256MB) / (Recommend Over 256MB)
+2026-10-01 01:25:08,262 [CRITICAL] [MemoryGuard] Self-terminating process 2551 to prevent system instability.
+agent-admin@leak-lab:~$ mv $AGENT_LOG_DIR/monitor.log $AGENT_LOG_DIR/monitor-256.log
+agent-admin@leak-lab:~$ (sleep 2; while ~/agent-app/bin/monitor.sh > /dev/null; do :; done) &
+[1] 2797
+agent-admin@leak-lab:~$ date +%T; MEMORY_LIMIT=128 $AGENT_HOME/agent-leak-app-arm64; echo "exit=$?"; date +%T
+01:25:15
+>>> Starting Agent Boot Sequence...
+[1/6] Checking User Account               [OK]
+   ... Running as service user 'agent-admin' (uid=1000)
+[2/6] Verifying Environment Variables     [OK]
+   ... All required Envs correct
+[3/6] Checking Required Files             [OK]
+   ... Verified 'secret.key' with correct key string.
+[4/6] Checking Port Availability          [OK]
+   ... Port 15034 is available.
+[5/6] Verifying Log Permission            [OK]
+   ... Log directory is writable: /var/log/agent-app
+[6/6] Verifying Mission Environment       [OK]
+   ... MEMORY_LIMIT=128MB, CPU_MAX_OCCUPY=30%, MULTI_THREAD_ENABLE=False
+------------------------------------------------------------
+All Boot Checks Passed!
+Agent READY
+2026-10-01 01:25:15,462 [INFO] [SafetyGuard] Process priority lowered (nice=10).
+2026-10-01 01:25:15,462 [INFO] Agent listening at port 15034
+
+==================================================
+ [ Agent Initiate ] Resource Check
+==================================================
+ [ MEMORY ] Limit: 128MB                [ WARNING: Recommend Over 256MB ]
+ [ CPU    ] Limit: 30%                  [ OK ]
+ [ THREAD ] Concurrency: False          [ OK ]
+--------------------------------------------------
+ >>> SYSTEM STATUS: STABLE. STARTING WORKLOAD MONITORING...
+==================================================
+
+2026-10-01 01:25:17,498 [INFO] [MemoryWorker] Current Heap: 25MB
+2026-10-01 01:25:20,537 [INFO] [MemoryWorker] Current Heap: 50MB
+2026-10-01 01:25:23,576 [INFO] [MemoryWorker] Current Heap: 75MB
+2026-10-01 01:25:26,605 [INFO] [MemoryWorker] Current Heap: 100MB
+2026-10-01 01:25:29,639 [INFO] [MemoryWorker] Current Heap: 125MB
+2026-10-01 01:25:32,671 [INFO] [MemoryWorker] Current Heap: 150MB
+2026-10-01 01:25:32,671 [CRITICAL] [MemoryGuard] Memory limit exceeded (150MB >= 128MB) / (Recommend Over 256MB)
+2026-10-01 01:25:32,671 [CRITICAL] [MemoryGuard] Self-terminating process 2801 to prevent system instability.
+
+>>> [SYSTEM] SELF-TERMINATED (Memory Limit Exceeded) <<<
+
+Killed
+exit=137
+01:25:32
+agent-admin@leak-lab:~$ sleep 4
+[1]+  Done                    ( sleep 2; while ~/agent-app/bin/monitor.sh > /dev/null; do
+    :;
+done )
+agent-admin@leak-lab:~$ cat $AGENT_LOG_DIR/monitor.log
+[2026-10-01 01:25:19] PID:2801 STAT:S THREADS:1 CPU:0.7% RSS:41MB MEM:1.0% SYS_CPU:0.1% SYS_MEM:11.1% LOG_IDLE:2s
+[2026-10-01 01:25:22] PID:2801 STAT:S THREADS:1 CPU:0.7% RSS:66MB MEM:1.7% SYS_CPU:0.1% SYS_MEM:17.6% LOG_IDLE:2s
+[2026-10-01 01:25:25] PID:2801 STAT:S THREADS:1 CPU:0.7% RSS:91MB MEM:2.3% SYS_CPU:0.1% SYS_MEM:12.5% LOG_IDLE:2s
+[2026-10-01 01:25:28] PID:2801 STAT:S THREADS:1 CPU:0.3% RSS:116MB MEM:2.9% SYS_CPU:0.2% SYS_MEM:12.9% LOG_IDLE:2s
+[2026-10-01 01:25:31] PID:2801 STAT:S THREADS:1 CPU:0.7% RSS:141MB MEM:3.6% SYS_CPU:0.2% SYS_MEM:13.6% LOG_IDLE:2s
+[2026-10-01 01:25:35] PROCESS:down
+agent-admin@leak-lab:~$ mv $AGENT_LOG_DIR/monitor.log $AGENT_LOG_DIR/monitor-128.log
+agent-admin@leak-lab:~$ sed -i 's/^export MEMORY_LIMIT=.*/export MEMORY_LIMIT=512/' ~/.bash_profile
+agent-admin@leak-lab:~$ source ~/.bash_profile
+agent-admin@leak-lab:~$ grep MEMORY_LIMIT ~/.bash_profile
+export MEMORY_LIMIT=512
+agent-admin@leak-lab:~$ date +%T; nohup $AGENT_HOME/agent-leak-app-arm64 > $AGENT_LOG_DIR/console.log 2>&1 &
+01:25:40
+[1] 2934
+agent-admin@leak-lab:~$ sleep 2
+agent-admin@leak-lab:~$ for i in $(seq 40); do ~/agent-app/bin/monitor.sh; done
+[2026-10-01 01:25:46] PID:2935 STAT:S THREADS:3 CPU:0.7% RSS:67MB MEM:1.7% SYS_CPU:0.1% SYS_MEM:11.7% LOG_IDLE:0s
+[2026-10-01 01:25:49] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:92MB MEM:2.3% SYS_CPU:0.2% SYS_MEM:12.4% LOG_IDLE:0s
+[2026-10-01 01:25:52] PID:2935 STAT:S THREADS:3 CPU:1.0% RSS:117MB MEM:2.9% SYS_CPU:0.2% SYS_MEM:13.1% LOG_IDLE:0s
+[2026-10-01 01:25:55] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:142MB MEM:3.6% SYS_CPU:0.2% SYS_MEM:13.7% LOG_IDLE:0s
+[2026-10-01 01:25:58] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:167MB MEM:4.2% SYS_CPU:0.2% SYS_MEM:14.4% LOG_IDLE:0s
+[2026-10-01 01:26:01] PID:2935 STAT:S THREADS:3 CPU:2.0% RSS:192MB MEM:4.8% SYS_CPU:0.4% SYS_MEM:15.0% LOG_IDLE:0s
+[2026-10-01 01:26:04] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:217MB MEM:5.4% SYS_CPU:0.3% SYS_MEM:15.7% LOG_IDLE:0s
+[2026-10-01 01:26:07] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:242MB MEM:6.1% SYS_CPU:0.2% SYS_MEM:16.3% LOG_IDLE:0s
+[2026-10-01 01:26:10] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:267MB MEM:6.7% SYS_CPU:0.3% SYS_MEM:17.0% LOG_IDLE:0s
+[2026-10-01 01:26:13] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:292MB MEM:7.3% SYS_CPU:0.2% SYS_MEM:17.6% LOG_IDLE:0s
+[2026-10-01 01:26:16] PID:2935 STAT:S THREADS:3 CPU:0.7% RSS:317MB MEM:8.0% SYS_CPU:0.3% SYS_MEM:18.4% LOG_IDLE:0s
+[2026-10-01 01:26:19] PID:2935 STAT:S THREADS:3 CPU:0.7% RSS:342MB MEM:8.6% SYS_CPU:0.2% SYS_MEM:19.0% LOG_IDLE:0s
+[2026-10-01 01:26:22] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:367MB MEM:9.2% SYS_CPU:0.2% SYS_MEM:19.7% LOG_IDLE:0s
+[2026-10-01 01:26:25] PID:2935 STAT:S THREADS:3 CPU:1.7% RSS:392MB MEM:9.8% SYS_CPU:0.2% SYS_MEM:20.3% LOG_IDLE:0s
+[2026-10-01 01:26:28] PID:2935 STAT:S THREADS:3 CPU:1.7% RSS:417MB MEM:10.5% SYS_CPU:0.2% SYS_MEM:21.0% LOG_IDLE:0s
+[2026-10-01 01:26:32] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:442MB MEM:11.1% SYS_CPU:0.2% SYS_MEM:21.6% LOG_IDLE:1s
+[2026-10-01 01:26:35] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:467MB MEM:11.7% SYS_CPU:0.2% SYS_MEM:22.3% LOG_IDLE:1s
+[2026-10-01 01:26:38] PID:2935 STAT:S THREADS:3 CPU:1.7% RSS:492MB MEM:12.3% SYS_CPU:0.2% SYS_MEM:22.9% LOG_IDLE:1s
+[2026-10-01 01:26:41] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:517MB MEM:13.0% SYS_CPU:0.2% SYS_MEM:23.5% LOG_IDLE:1s
+[2026-10-01 01:26:44] PID:2935 STAT:S THREADS:3 CPU:2.0% RSS:17MB MEM:0.4% SYS_CPU:0.2% SYS_MEM:10.4% LOG_IDLE:1s
+[2026-10-01 01:26:47] PID:2935 STAT:S THREADS:3 CPU:0.3% RSS:17MB MEM:0.4% SYS_CPU:0.1% SYS_MEM:10.4% LOG_IDLE:2s
+[2026-10-01 01:26:50] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:42MB MEM:1.1% SYS_CPU:0.2% SYS_MEM:11.1% LOG_IDLE:1s
+[2026-10-01 01:26:53] PID:2935 STAT:S THREADS:3 CPU:0.7% RSS:67MB MEM:1.7% SYS_CPU:0.2% SYS_MEM:11.7% LOG_IDLE:1s
+[2026-10-01 01:26:56] PID:2935 STAT:S THREADS:3 CPU:1.0% RSS:92MB MEM:2.3% SYS_CPU:0.2% SYS_MEM:12.3% LOG_IDLE:1s
+[2026-10-01 01:26:59] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:116MB MEM:2.9% SYS_CPU:0.3% SYS_MEM:13.2% LOG_IDLE:1s
+[2026-10-01 01:27:02] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:141MB MEM:3.6% SYS_CPU:0.3% SYS_MEM:13.8% LOG_IDLE:1s
+[2026-10-01 01:27:05] PID:2935 STAT:S THREADS:3 CPU:1.7% RSS:166MB MEM:4.2% SYS_CPU:0.2% SYS_MEM:14.4% LOG_IDLE:1s
+[2026-10-01 01:27:08] PID:2935 STAT:S THREADS:3 CPU:1.7% RSS:191MB MEM:4.8% SYS_CPU:0.2% SYS_MEM:15.1% LOG_IDLE:1s
+[2026-10-01 01:27:11] PID:2935 STAT:S THREADS:3 CPU:2.3% RSS:216MB MEM:5.4% SYS_CPU:0.4% SYS_MEM:15.6% LOG_IDLE:1s
+[2026-10-01 01:27:14] PID:2935 STAT:S THREADS:3 CPU:1.0% RSS:241MB MEM:6.1% SYS_CPU:0.1% SYS_MEM:16.2% LOG_IDLE:1s
+[2026-10-01 01:27:17] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:266MB MEM:6.7% SYS_CPU:0.2% SYS_MEM:16.8% LOG_IDLE:0s
+[2026-10-01 01:27:20] PID:2935 STAT:S THREADS:3 CPU:1.0% RSS:291MB MEM:7.3% SYS_CPU:0.2% SYS_MEM:17.5% LOG_IDLE:0s
+[2026-10-01 01:27:23] PID:2935 STAT:S THREADS:3 CPU:1.0% RSS:316MB MEM:7.9% SYS_CPU:0.2% SYS_MEM:17.8% LOG_IDLE:0s
+[2026-10-01 01:27:26] PID:2935 STAT:S THREADS:3 CPU:0.3% RSS:341MB MEM:8.6% SYS_CPU:0.0% SYS_MEM:18.5% LOG_IDLE:0s
+[2026-10-01 01:27:29] PID:2935 STAT:S THREADS:3 CPU:1.0% RSS:366MB MEM:9.2% SYS_CPU:0.4% SYS_MEM:19.2% LOG_IDLE:0s
+[2026-10-01 01:27:32] PID:2935 STAT:S THREADS:3 CPU:1.0% RSS:391MB MEM:9.8% SYS_CPU:0.2% SYS_MEM:19.9% LOG_IDLE:0s
+[2026-10-01 01:27:35] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:416MB MEM:10.5% SYS_CPU:0.2% SYS_MEM:20.5% LOG_IDLE:0s
+[2026-10-01 01:27:38] PID:2935 STAT:S THREADS:3 CPU:0.3% RSS:441MB MEM:11.1% SYS_CPU:0.1% SYS_MEM:21.2% LOG_IDLE:1s
+[2026-10-01 01:27:41] PID:2935 STAT:S THREADS:3 CPU:1.3% RSS:466MB MEM:11.7% SYS_CPU:0.5% SYS_MEM:21.8% LOG_IDLE:1s
+[2026-10-01 01:27:45] PID:2935 STAT:S THREADS:3 CPU:1.7% RSS:491MB MEM:12.3% SYS_CPU:0.2% SYS_MEM:22.4% LOG_IDLE:1s
+agent-admin@leak-lab:~$ grep -E 'Reached Limit|Flushed' $AGENT_LOG_DIR/agent_app.log
+2026-10-01 01:26:43,953 [WARNING] [MemoryWorker] Memory Usage Reached Limit (525MB). Starting cleanup...
+2026-10-01 01:26:43,982 [INFO] [System] Memory Cache Flushed. Process Stabilized.
+agent-admin@leak-lab:~$ ps -o pid,etime,rss,vsz,stat,cmd -p $(pgrep -n -x agent-leak-app-)
+    PID     ELAPSED   RSS    VSZ STAT CMD
+   2935       02:06 503552 766552 SNl /home/agent-admin/agent-app/agent-leak-app-arm64
+agent-admin@leak-lab:~$ top -b -n 1 -p $(pgrep -n -x agent-leak-app-) | tail -2
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+   2935 agent-a+  30  10  766552 529140   8472 S   6.2  13.0   0:01.60 agent-leak-app-
+agent-admin@leak-lab:~$ date +%T; pkill -x agent-leak-app-
+01:27:47
+agent-admin@leak-lab:~$ sleep 2
+[1]+  Terminated              nohup $AGENT_HOME/agent-leak-app-arm64 > $AGENT_LOG_DIR/console.log 2>&1
+agent-admin@leak-lab:~$ mv $AGENT_LOG_DIR/monitor.log $AGENT_LOG_DIR/monitor-512.log
+agent-admin@leak-lab:~$ ls $AGENT_LOG_DIR
+agent_app.log  console.log  monitor-128.log  monitor-256.log  monitor-512.log
+agent-admin@leak-lab:~$ exit
+logout
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ exit
+logout
+jungbin-MacBookPro% exit

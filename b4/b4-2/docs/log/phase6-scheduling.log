@@ -1,0 +1,70 @@
+jungbin-MacBookPro% orb -m leak-lab
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ sudo -iu agent-admin
+agent-admin@leak-lab:~$ echo "MEMORY_LIMIT=$MEMORY_LIMIT CPU_MAX_OCCUPY=$CPU_MAX_OCCUPY MULTI_THREAD_ENABLE=$MULTI_THREAD_ENABLE"
+MEMORY_LIMIT=512 CPU_MAX_OCCUPY=30 MULTI_THREAD_ENABLE=false
+agent-admin@leak-lab:~$ mv $AGENT_LOG_DIR/agent_app.log $AGENT_LOG_DIR/agent_app-mt-false.log
+agent-admin@leak-lab:~$ for n in 1 2 3; do nohup $AGENT_HOME/agent-leak-app-arm64 > /dev/null 2>&1 & sleep 4; pkill -x agent-leak-app-; sleep 2; done
+[1] 5374
+[1]+  Terminated              nohup $AGENT_HOME/agent-leak-app-arm64 > /dev/null 2>&1
+[1] 5381
+[1]+  Terminated              nohup $AGENT_HOME/agent-leak-app-arm64 > /dev/null 2>&1
+[1] 5388
+[1]+  Terminated              nohup $AGENT_HOME/agent-leak-app-arm64 > /dev/null 2>&1
+agent-admin@leak-lab:~$ grep -c 'Scenario Selected: \[Healthy' $AGENT_LOG_DIR/agent_app.log
+3
+agent-admin@leak-lab:~$ grep -E 'Scheduler|\[Thread-' $AGENT_LOG_DIR/agent_app.log | head -19
+2026-10-01 01:45:02,077 [INFO] [Scheduler] Task Scheduler Initialized.
+2026-10-01 01:45:02,077 [INFO] [Scheduler] Registered Tasks: ['Thread-A', 'Thread-B', 'Thread-C']
+2026-10-01 01:45:02,077 [INFO] [Scheduler] Starting task execution...
+2026-10-01 01:45:02,078 [INFO] [Thread-B] Task Started. Calculating... (20%)
+2026-10-01 01:45:02,133 [INFO] [Thread-B] Calculating... (40%)
+2026-10-01 01:45:02,185 [INFO] [Thread-B] Calculating... (60%)
+2026-10-01 01:45:02,239 [INFO] [Thread-B] Calculating... (80%)
+2026-10-01 01:45:02,290 [INFO] [Thread-B] Task Completed. (100%)
+2026-10-01 01:45:02,346 [INFO] [Thread-C] Task Started. Calculating... (20%)
+2026-10-01 01:45:02,401 [INFO] [Thread-C] Calculating... (40%)
+2026-10-01 01:45:02,457 [INFO] [Thread-C] Calculating... (60%)
+2026-10-01 01:45:02,508 [INFO] [Thread-C] Calculating... (80%)
+2026-10-01 01:45:02,563 [INFO] [Thread-C] Task Completed. (100%)
+2026-10-01 01:45:02,619 [INFO] [Thread-A] Task Started. Calculating... (20%)
+2026-10-01 01:45:02,674 [INFO] [Thread-A] Calculating... (40%)
+2026-10-01 01:45:02,725 [INFO] [Thread-A] Calculating... (60%)
+2026-10-01 01:45:02,780 [INFO] [Thread-A] Calculating... (80%)
+2026-10-01 01:45:02,832 [INFO] [Thread-A] Task Completed. (100%)
+2026-10-01 01:45:02,888 [INFO] [Scheduler] All tasks completed.
+agent-admin@leak-lab:~$ grep -oE '\[Thread-.\]' $AGENT_LOG_DIR/agent_app.log | uniq -c
+      5 [Thread-B]
+      5 [Thread-C]
+      5 [Thread-A]
+      5 [Thread-B]
+      5 [Thread-C]
+      5 [Thread-A]
+      5 [Thread-B]
+      5 [Thread-C]
+      5 [Thread-A]
+agent-admin@leak-lab:~$ grep -E 'Task Started|Task Completed' $AGENT_LOG_DIR/agent_app.log
+2026-10-01 01:45:02,078 [INFO] [Thread-B] Task Started. Calculating... (20%)
+2026-10-01 01:45:02,290 [INFO] [Thread-B] Task Completed. (100%)
+2026-10-01 01:45:02,346 [INFO] [Thread-C] Task Started. Calculating... (20%)
+2026-10-01 01:45:02,563 [INFO] [Thread-C] Task Completed. (100%)
+2026-10-01 01:45:02,619 [INFO] [Thread-A] Task Started. Calculating... (20%)
+2026-10-01 01:45:02,832 [INFO] [Thread-A] Task Completed. (100%)
+2026-10-01 01:45:08,088 [INFO] [Thread-B] Task Started. Calculating... (20%)
+2026-10-01 01:45:08,300 [INFO] [Thread-B] Task Completed. (100%)
+2026-10-01 01:45:08,356 [INFO] [Thread-C] Task Started. Calculating... (20%)
+2026-10-01 01:45:08,586 [INFO] [Thread-C] Task Completed. (100%)
+2026-10-01 01:45:08,640 [INFO] [Thread-A] Task Started. Calculating... (20%)
+2026-10-01 01:45:08,857 [INFO] [Thread-A] Task Completed. (100%)
+2026-10-01 01:45:14,098 [INFO] [Thread-B] Task Started. Calculating... (20%)
+2026-10-01 01:45:14,312 [INFO] [Thread-B] Task Completed. (100%)
+2026-10-01 01:45:14,366 [INFO] [Thread-C] Task Started. Calculating... (20%)
+2026-10-01 01:45:14,583 [INFO] [Thread-C] Task Completed. (100%)
+2026-10-01 01:45:14,638 [INFO] [Thread-A] Task Started. Calculating... (20%)
+2026-10-01 01:45:14,850 [INFO] [Thread-A] Task Completed. (100%)
+agent-admin@leak-lab:~$ grep -cE 'Preempted|Resumed' $AGENT_LOG_DIR/agent_app.log
+0
+agent-admin@leak-lab:~$ exit
+logout
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ exit
+logout
+jungbin-MacBookPro% exit

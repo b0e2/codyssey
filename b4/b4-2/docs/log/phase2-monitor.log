@@ -1,0 +1,35 @@
+jungbin-MacBookPro% orb -m leak-lab
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ sudo install -D -o agent-admin -g agent-admin -m 750 scripts/monitor.sh /home/agent-admin/agent-app/bin/monitor.sh
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ sudo -iu agent-admin
+agent-admin@leak-lab:~$ ls -l ~/agent-app/bin
+total 4
+-rwxr-x--- 1 agent-admin agent-admin 2429 Oct  1 01:20 monitor.sh
+agent-admin@leak-lab:~$ nohup $AGENT_HOME/agent-leak-app-arm64 > $AGENT_LOG_DIR/console.log 2>&1 &
+[1] 2420
+agent-admin@leak-lab:~$ sleep 3
+agent-admin@leak-lab:~$ pgrep -a -x agent-leak-app-
+2420 /home/agent-admin/agent-app/agent-leak-app-arm64
+2421 /home/agent-admin/agent-app/agent-leak-app-arm64
+agent-admin@leak-lab:~$ ~/agent-app/bin/monitor.sh
+[2026-10-01 01:20:11] PID:2421 STAT:S THREADS:3 CPU:0.7% RSS:67MB MEM:1.7% SYS_CPU:0.1% SYS_MEM:12.7% LOG_IDLE:1s
+agent-admin@leak-lab:~$ ~/agent-app/bin/monitor.sh
+[2026-10-01 01:20:15] PID:2421 STAT:S THREADS:3 CPU:1.0% RSS:91MB MEM:2.3% SYS_CPU:0.2% SYS_MEM:13.0% LOG_IDLE:2s
+agent-admin@leak-lab:~$ ~/agent-app/bin/monitor.sh
+[2026-10-01 01:20:18] PID:2421 STAT:S THREADS:3 CPU:1.3% RSS:116MB MEM:2.9% SYS_CPU:0.2% SYS_MEM:13.6% LOG_IDLE:0s
+agent-admin@leak-lab:~$ kill %1
+agent-admin@leak-lab:~$ sleep 2
+[1]+  Terminated              nohup $AGENT_HOME/agent-leak-app-arm64 > $AGENT_LOG_DIR/console.log 2>&1
+agent-admin@leak-lab:~$ ~/agent-app/bin/monitor.sh; echo "exit=$?"
+[2026-10-01 01:20:22] PROCESS:down
+exit=1
+agent-admin@leak-lab:~$ cat $AGENT_LOG_DIR/monitor.log
+[2026-10-01 01:20:11] PID:2421 STAT:S THREADS:3 CPU:0.7% RSS:67MB MEM:1.7% SYS_CPU:0.1% SYS_MEM:12.7% LOG_IDLE:1s
+[2026-10-01 01:20:15] PID:2421 STAT:S THREADS:3 CPU:1.0% RSS:91MB MEM:2.3% SYS_CPU:0.2% SYS_MEM:13.0% LOG_IDLE:2s
+[2026-10-01 01:20:18] PID:2421 STAT:S THREADS:3 CPU:1.3% RSS:116MB MEM:2.9% SYS_CPU:0.2% SYS_MEM:13.6% LOG_IDLE:0s
+[2026-10-01 01:20:22] PROCESS:down
+agent-admin@leak-lab:~$ rm $AGENT_LOG_DIR/*.log
+agent-admin@leak-lab:~$ exit
+logout
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ exit
+logout
+jungbin-MacBookPro% exit

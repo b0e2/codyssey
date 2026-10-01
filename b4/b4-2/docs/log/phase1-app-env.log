@@ -1,0 +1,123 @@
+jungbin-MacBookPro% orb -m leak-lab
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ sudo useradd -m -s /bin/bash agent-admin
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ id agent-admin
+uid=1000(agent-admin) gid=1000(agent-admin) groups=1000(agent-admin)
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ sudo mkdir -p /var/log/agent-app
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ sudo chown agent-admin:agent-admin /var/log/agent-app
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ unzip -o /Users/jeongbin/Downloads/agent-app-leak.zip agent-leak-app-arm64 -d /tmp
+Archive:  /Users/jeongbin/Downloads/agent-app-leak.zip
+  inflating: /tmp/agent-leak-app-arm64
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ sudo -iu agent-admin
+agent-admin@leak-lab:~$ mkdir -p ~/agent-app/upload_files ~/agent-app/api_keys
+agent-admin@leak-lab:~$ cp /tmp/agent-leak-app-arm64 ~/agent-app/
+agent-admin@leak-lab:~$ echo 'agent_api_key_test' > ~/agent-app/api_keys/secret.key
+agent-admin@leak-lab:~$ cat > ~/.bash_profile <<'EOF'
+> export AGENT_HOME=$HOME/agent-app
+> export AGENT_PORT=15034
+> export AGENT_UPLOAD_DIR=$AGENT_HOME/upload_files
+> export AGENT_KEY_PATH=$AGENT_HOME/api_keys
+> export AGENT_LOG_DIR=/var/log/agent-app
+> export MEMORY_LIMIT=512
+> export CPU_MAX_OCCUPY=30
+> export MULTI_THREAD_ENABLE=false
+> EOF
+agent-admin@leak-lab:~$ exit
+logout
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ sudo -iu agent-admin
+agent-admin@leak-lab:~$ env | grep -E '^(AGENT_|MEMORY_|CPU_|MULTI_)' | sort
+AGENT_HOME=/home/agent-admin/agent-app
+AGENT_KEY_PATH=/home/agent-admin/agent-app/api_keys
+AGENT_LOG_DIR=/var/log/agent-app
+AGENT_PORT=15034
+AGENT_UPLOAD_DIR=/home/agent-admin/agent-app/upload_files
+CPU_MAX_OCCUPY=30
+MEMORY_LIMIT=512
+MULTI_THREAD_ENABLE=false
+agent-admin@leak-lab:~$ ls -l ~/agent-app ~/agent-app/api_keys
+/home/agent-admin/agent-app:
+total 6116
+-rwxr-xr-x 1 agent-admin agent-admin 6261928 Oct  1 00:14 agent-leak-app-arm64
+drwxrwxr-x 1 agent-admin agent-admin      20 Oct  1 00:14 api_keys
+drwxrwxr-x 1 agent-admin agent-admin       0 Oct  1 00:14 upload_files
+
+/home/agent-admin/agent-app/api_keys:
+total 4
+-rw-rw-r-- 1 agent-admin agent-admin 19 Oct  1 00:14 secret.key
+agent-admin@leak-lab:~$ cat ~/agent-app/api_keys/secret.key
+agent_api_key_test
+agent-admin@leak-lab:~$ ls -ld /var/log/agent-app
+drwxr-xr-x 1 agent-admin agent-admin 0 Oct  1 00:14 /var/log/agent-app
+agent-admin@leak-lab:~$ nohup $AGENT_HOME/agent-leak-app-arm64 > $AGENT_LOG_DIR/console.log 2>&1 &
+[1] 774
+agent-admin@leak-lab:~$ sleep 5
+agent-admin@leak-lab:~$ head -40 $AGENT_LOG_DIR/console.log
+nohup: ignoring input
+>>> Starting Agent Boot Sequence...
+[1/6] Checking User Account               [OK]
+   ... Running as service user 'agent-admin' (uid=1000)
+[2/6] Verifying Environment Variables     [OK]
+   ... All required Envs correct
+[3/6] Checking Required Files             [OK]
+   ... Verified 'secret.key' with correct key string.
+[4/6] Checking Port Availability          [OK]
+   ... Port 15034 is available.
+[5/6] Verifying Log Permission            [OK]
+   ... Log directory is writable: /var/log/agent-app
+[6/6] Verifying Mission Environment       [OK]
+   ... MEMORY_LIMIT=512MB, CPU_MAX_OCCUPY=30%, MULTI_THREAD_ENABLE=False
+------------------------------------------------------------
+All Boot Checks Passed!
+Agent READY
+2026-10-01 00:14:53,335 [INFO] [SafetyGuard] Process priority lowered (nice=10).
+2026-10-01 00:14:53,335 [INFO] Agent listening at port 15034
+
+==================================================
+ [ Agent Initiate ] Resource Check
+==================================================
+ [ MEMORY ] Limit: 512MB                [ OK ]
+ [ CPU    ] Limit: 30%                  [ OK ]
+ [ THREAD ] Concurrency: False          [ OK ]
+--------------------------------------------------
+ >>> SYSTEM STATUS: STABLE. STARTING WORKLOAD MONITORING...
+==================================================
+
+2026-10-01 00:14:55,352 [INFO] >>> Scenario Selected: [Healthy System Monitoring]
+
+>>> [SYSTEM] ALL CONFIGURATIONS OPTIMAL. RUNNING STABILITY TEST... <<<
+
+2026-10-01 00:14:55,356 [INFO] [Scheduler] Task Scheduler Initialized.
+2026-10-01 00:14:55,356 [INFO] [Scheduler] Registered Tasks: ['Thread-A', 'Thread-B', 'Thread-C']
+2026-10-01 00:14:55,357 [INFO] [Scheduler] Starting task execution...
+2026-10-01 00:14:55,357 [INFO] [Thread-B] Task Started. Calculating... (20%)
+2026-10-01 00:14:55,416 [INFO] [Thread-B] Calculating... (40%)
+2026-10-01 00:14:55,468 [INFO] [Thread-B] Calculating... (60%)
+agent-admin@leak-lab:~$ ss -tlnp | grep 15034
+LISTEN 0      1            0.0.0.0:15034      0.0.0.0:*    users:(("agent-leak-app-",pid=775,fd=4))
+agent-admin@leak-lab:~$ ps -o user,pid,ppid,ni,stat,cmd -u agent-admin
+USER         PID    PPID  NI STAT CMD
+agent-a+     744       1   0 Ss   /lib/systemd/systemd --user
+agent-a+     745     744   0 S    (sd-pam)
+agent-a+     765     764   0 S    -bash
+agent-a+     774     765   0 S    /home/agent-admin/agent-app/agent-leak-app-arm64
+agent-a+     775     774  10 SNl  /home/agent-admin/agent-app/agent-leak-app-arm64
+agent-a+     782     765   0 R+   ps -o user,pid,ppid,ni,stat,cmd -u agent-admin
+agent-admin@leak-lab:~$ tail -5 $AGENT_LOG_DIR/agent_app.log
+2026-10-01 00:14:56,234 [INFO] [MemoryWorker] Current Heap: 25MB
+2026-10-01 00:14:56,234 [INFO] [CpuWorker] Started. Maximum CPU Limit: 30%
+2026-10-01 00:14:56,234 [INFO] [CpuWorker] Current Load: 5.00%
+2026-10-01 00:14:59,271 [INFO] [MemoryWorker] Current Heap: 50MB
+2026-10-01 00:14:59,374 [INFO] [CpuWorker] Current Load: 9.34%
+agent-admin@leak-lab:~$ kill %1
+agent-admin@leak-lab:~$ sleep 2
+[1]+  Terminated              nohup $AGENT_HOME/agent-leak-app-arm64 > $AGENT_LOG_DIR/console.log 2>&1
+agent-admin@leak-lab:~$ ps -u agent-admin -o pid,cmd
+    PID CMD
+    744 /lib/systemd/systemd --user
+    745 (sd-pam)
+    765 -bash
+    785 ps -u agent-admin -o pid,cmd
+agent-admin@leak-lab:~$ exit
+logout
+jeongbin@leak-lab:/Users/jeongbin/Desktop/b4-2$ exit
+logout
+jungbin-MacBookPro% exit
